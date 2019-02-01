@@ -47,6 +47,7 @@
 
 CONTROL Controls[4];
 /* global function pointers - initialized on core startup */
+enum gfx_plugin_type gfx_plugin;
 
 void ResizeVideoOutput(int width, int height){
 

@@ -27,7 +27,23 @@
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 
+enum gfx_plugin_type
+{
+   GFX_ANGRYLION = 0,
+   GFX_PARALLEL
+};
+
+enum rsp_plugin_type
+{
+   RSP_CXD4 = 0,
+   RSP_PARALLEL
+};
+
 extern void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin);
+
+
+
+extern enum gfx_plugin_type gfx_plugin;
 
 #ifdef __cplusplus
 extern "C" {
