@@ -27,7 +27,7 @@
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 
-extern void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin);
+extern void plugin_connect_all();
 
 #ifdef __cplusplus
 extern "C" {
