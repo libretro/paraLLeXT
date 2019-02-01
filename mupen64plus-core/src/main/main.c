@@ -80,7 +80,7 @@
 #endif
 
 #include "../../../libretro/libretro_memory.h"
-#include "../../../custom/GLideN64/GLideN64_libretro.h"
+#include "../../../custom/libretro_externs.h"
 
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
