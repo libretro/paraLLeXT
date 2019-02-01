@@ -29,7 +29,6 @@
 #include "device/rcp/mi/mi_controller.h"
 #include "main/main.h"
 #include "plugin/plugin.h"
-#include "../../../../../custom/GLideN64/GLideN64_libretro.h"
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard)
 {
