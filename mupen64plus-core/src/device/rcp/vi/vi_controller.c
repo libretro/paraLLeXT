@@ -71,13 +71,8 @@ void poweron_vi(struct vi_controller* vi)
 {
     memset(vi->regs, 0, VI_REGS_COUNT*sizeof(uint32_t));
     vi->field = 0;
-    if(!CountPerScanlineOverride) {
-        vi->delay = vi->next_vi = 0;
-        vi->count_per_scanline = 0;
-    } else {
-        vi->delay = vi->next_vi = 5000;
-        vi->count_per_scanline = CountPerScanlineOverride;
-    }
+    vi->delay = vi->next_vi = 0;
+    vi->count_per_scanline = 0;
 }
 
 void read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
@@ -136,11 +131,7 @@ void write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
         if ((vi->regs[VI_V_SYNC_REG] & mask) != (value & mask))
         {
             masked_write(&vi->regs[VI_V_SYNC_REG], value, mask);
-            if(!CountPerScanlineOverride) {
-                vi->count_per_scanline = (vi->clock / vi->expected_refresh_rate) / (vi->regs[VI_V_SYNC_REG] + 1);
-            } else {
-                vi->count_per_scanline = CountPerScanlineOverride;
-            }
+            vi->count_per_scanline = (vi->clock / vi->expected_refresh_rate) / (vi->regs[VI_V_SYNC_REG] + 1);
             vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * vi->count_per_scanline;
         }
         return;
@@ -173,16 +164,8 @@ void vi_vertical_interrupt_event(void* opaque)
 
     /* toggle vi field if in interlaced mode */
     vi->field ^= (vi->regs[VI_STATUS_REG] >> 6) & 0x1;
-
-    /* schedule next vertical interrupt */
-    if(CountPerScanlineOverride) {
-        if (vi->regs[VI_V_SYNC_REG] == 0)
-            vi->delay = 500000;
-        else
-            vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * vi->count_per_scanline;
-    }
-
     vi->next_vi += vi->delay;
+
     add_interrupt_event_count(&vi->mi->r4300->cp0, VI_INT, vi->next_vi);
 
     /* trigger interrupt */
