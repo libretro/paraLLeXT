@@ -47,6 +47,7 @@
 
 CONTROL Controls[4];
 /* global function pointers - initialized on core startup */
+enum gfx_plugin_type gfx_plugin;
 
 void ResizeVideoOutput(int width, int height){
 
@@ -94,7 +95,10 @@ void ResizeVideoOutput(int width, int height){
         FBGetFrameBufferInfo \
     }
 
-DEFINE_GFX(gln64);
+DEFINE_GFX(angrylion);
+#ifdef HAVE_PARALLEL
+DEFINE_GFX(parallel);
+#endif
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
@@ -172,9 +176,9 @@ static void EmptyFunc(void)
         X##RomClosed \
     }
 
-DEFINE_RSP(hle);
-#ifndef VC
-//DEFINE_RSP(lle);
+DEFINE_RSP(cxd4);
+#ifdef HAVE_PARALLEL_RSP
+DEFINE_RSP(parallelRSP);
 #endif
 static void                     (*l_mainRenderCallback)(int) = NULL;
 static ptr_SetRenderingCallback   l_old1SetRenderingCallback = NULL;
@@ -371,20 +375,44 @@ m64p_error plugin_check(void)
 }
 
 /* global functions */
-void plugin_connect_all()
+void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin)
 {
-    gfx = gfx_gln64;
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:
+         gfx = gfx_angrylion;
+         break;
+      case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+         gfx = gfx_parallel;
+#endif
+         break;
+      default:
+         gfx = gfx_angrylion;
+         break;
+   }
+
+   switch (rsp_plugin)
+   {
+      case RSP_CXD4:
+         rsp = rsp_cxd4;
+         break;
+#ifdef HAVE_PARALLEL_RSP
+      case RSP_PARALLEL:
+         rsp = rsp_parallelRSP;
+         break;
+#endif
+      default:
+         rsp = rsp_cxd4;
+         break;
+   }
     l_GfxAttached = 1;
     plugin_start_gfx();
-
-    rsp = rsp_hle;
     l_RspAttached = 1;
     plugin_start_rsp();
-
     audio = dummy_audio;
     l_AudioAttached = 1;
     //plugin_start_audio();
-    
     input = dummy_input;
     l_InputAttached = 1;
     plugin_start_input();
