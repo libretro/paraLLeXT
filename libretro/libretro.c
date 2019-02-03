@@ -4,15 +4,13 @@
 
 #include "libretro.h"
 #include "libretro_private.h"
-#include "GLideN64_libretro.h"
+#include "libretro_externs.h"
 
 #include <libco.h>
 
 #ifdef HAVE_LIBNX
 #include <switch.h>
 #endif
-
-#include <glsm/glsmsym.h>
 
 #include "api/m64p_frontend.h"
 #include "plugin/plugin.h"
@@ -33,6 +31,14 @@
 #include "libretro_memory.h"
 
 #include "audio_plugin.h"
+
+#if defined(HAVE_PARALLEL)
+#include "../mupen64plus-video-paraLLEl/parallel.h"
+
+static struct retro_hw_render_callback hw_render;
+static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_negotiation;
+static const struct retro_hw_render_interface_vulkan *vulkan;
+#endif
 
 #ifndef PRESCALE_WIDTH
 #define PRESCALE_WIDTH  640
@@ -65,10 +71,6 @@ cothread_t retro_thread;
 
 int astick_deadzone;
 int astick_sensitivity;
-int r_cbutton;
-int l_cbutton;
-int d_cbutton;
-int u_cbutton;
 
 static uint8_t* game_data = NULL;
 static uint32_t game_size = 0;
@@ -76,7 +78,7 @@ static uint32_t game_size = 0;
 static bool     emu_initialized     = false;
 static unsigned initial_boot        = true;
 static unsigned audio_buffer_size   = 2048;
-
+static bool vulkan_inited           = false;
 static unsigned retro_filtering     = 0;
 static bool     first_context_reset = false;
 static bool     initializing        = true;
@@ -85,30 +87,13 @@ uint32_t retro_screen_width = 320;
 uint32_t retro_screen_height = 240;
 float retro_screen_aspect = 4.0 / 3.0;
 
-uint32_t bilinearMode = 0;
-uint32_t EnableHWLighting = 0;
-uint32_t CorrectTexrectCoords = 0;
-uint32_t enableNativeResTexrects = 0;
-uint32_t enableLegacyBlending = 0;
-uint32_t EnableCopyColorToRDRAM = 0;
-uint32_t EnableCopyDepthToRDRAM = 0;
-uint32_t AspectRatio = 0;
-uint32_t txFilterMode = 0;
-uint32_t txEnhancementMode = 0;
-uint32_t txHiresEnable = 0;
-uint32_t txHiresFullAlphaChannel = 0;
-uint32_t txFilterIgnoreBG = 0;
-uint32_t MultiSampling = 0;
-uint32_t EnableFragmentDepthWrite = 0;
-uint32_t EnableShadersStorage = 0;
-uint32_t CropMode = 0;
-uint32_t EnableFBEmulation = 0;
-uint32_t EnableFrameDuping = 0;
-uint32_t EnableNoiseEmulation = 0;
-uint32_t EnableLODEmulation = 0;
-uint32_t EnableFullspeed = 0;
 uint32_t CountPerOp = 0;
 uint32_t CountPerScanlineOverride = 0;
+uint32_t *blitter_buf               = NULL;
+uint32_t *blitter_buf_lock          = NULL;
+uint32_t screen_width               = 640;
+uint32_t screen_height              = 480;
+uint32_t screen_pitch               = 0;
 
 int rspMode = 0;
 
@@ -147,91 +132,40 @@ static void setup_variables(void)
 #else
             "CPU Core; cached_interpreter|pure_interpreter" },
 #endif
-        { "mupen64plus-rspmode",
-#ifndef VC
-            "RSP Mode; HLE|LLE" },
-#else
-            "RSP Mode; HLE" },
+#ifdef HAVE_PARALLEL
+      { "parallel-n64-parallel-rdp-synchronous",
+         "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
-        { "mupen64plus-43screensize",
-            "4:3 Resolution; 320x240|640x480|960x720|1280x960|1600x1200|1920x1440|2240x1680|2560x1920|2880x2160|3200x2400|3520x2640|3840x2880" },
-        { "mupen64plus-169screensize",
-            "16:9 Resolution; 640x360|960x540|1280x720|1920x1080|2560x1440|3840x2160|7680x4320" },
-        { "mupen64plus-aspect",
-            "Aspect Ratio; 4:3|16:9|16:9 adjusted" },
-        { "mupen64plus-BilinearMode",
-            "Bilinear filtering mode; standard|3point" },
-#ifndef HAVE_OPENGLES2
-        { "mupen64plus-MultiSampling",
-            "MSAA level; 0|2|4|8|16" },
+      { "parallel-n64-gfxplugin",
+         "GFX Plugin; angrylion"
+#if defined(HAVE_PARALLEL)
+            "|parallel"
 #endif
+      { "parallel-n64-rspplugin",
+         "RSP Plugin; cxd4"
+#ifdef HAVE_PARALLEL_RSP
+         "|parallel"
+#endif
+       { "parallel-n64-angrylion-vioverlay",
+       "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
+       },
+       { "parallel-n64-angrylion-multithread",
+         "(Angrylion) Multi-threading; enabled|disabled" },
+       { "parallel-n64-angrylion-overscan",
+         "(Angrylion) Hide overscan; disabled|enabled" },
+
+       { "parallel-n64-screensize",
+         "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },	
         { "mupen64plus-FrameDuping",
-#ifdef HAVE_LIBNX
-            "Frame Duplication; True|False" },
-#else
             "Frame Duplication; False|True" },
-#endif
         { "mupen64plus-Framerate",
             "Framerate; Original|Fullspeed" },
         { "mupen64plus-virefresh",
             "VI Refresh (Overclock); Auto|1500|2200" },
-        { "mupen64plus-NoiseEmulation",
-            "Noise Emulation; True|False" },
-        { "mupen64plus-EnableFBEmulation",
-            "Framebuffer Emulation; True|False" },
-        { "mupen64plus-EnableLODEmulation",
-            "LOD Emulation; True|False" },
-        { "mupen64plus-EnableCopyColorToRDRAM",
-#ifndef HAVE_OPENGLES
-            "Color buffer to RDRAM; Async|Sync|Off" },
-#else
-            "Color buffer to RDRAM; Off|Async|Sync" },
-#endif
-        { "mupen64plus-EnableCopyDepthToRDRAM",
-            "Depth buffer to RDRAM; Software|FromMem|Off" },
-        { "mupen64plus-EnableHWLighting",
-            "Hardware per-pixel lighting; False|True" },
-        { "mupen64plus-CorrectTexrectCoords",
-            "Continuous texrect coords; Off|Auto|Force" },
-        { "mupen64plus-EnableNativeResTexrects",
-            "Native res. 2D texrects; False|True" },
-#if defined(HAVE_OPENGLES)
-        { "mupen64plus-EnableLegacyBlending",
-            "Less accurate blending mode; True|False" },
-        { "mupen64plus-EnableFragmentDepthWrite",
-            "GPU shader depth write; False|True" },
-#else
-        { "mupen64plus-EnableLegacyBlending",
-            "Less accurate blending mode; False|True" },
-        { "mupen64plus-EnableFragmentDepthWrite",
-            "GPU shader depth write; True|False" },
-#endif
-        { "mupen64plus-EnableShadersStorage",
-            "Cache GPU Shaders; True|False" },
-        { "mupen64plus-CropMode",
-            "Crop Mode; Auto|Off" },
-        { "mupen64plus-txFilterMode",
-            "Texture filter; None|Smooth filtering 1|Smooth filtering 2|Smooth filtering 3|Smooth filtering 4|Sharp filtering 1|Sharp filtering 2" },
-        { "mupen64plus-txEnhancementMode",
-            "Texture Enhancement; None|As Is|X2|X2SAI|HQ2X|HQ2XS|LQ2X|LQ2XS|HQ4X|2xBRZ|3xBRZ|4xBRZ|5xBRZ|6xBRZ" },
-        { "mupen64plus-txFilterIgnoreBG",
-            "Filter background textures; True|False" },
-        { "mupen64plus-txHiresEnable",
-            "Use High-Res textures; False|True" },
-        { "mupen64plus-txHiresFullAlphaChannel",
-            "Use High-Res Full Alpha Channel; False|True" },
         {"mupen64plus-astick-deadzone",
            "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
         {"mupen64plus-astick-sensitivity",
            "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|50|55|60|65|70|75|80|85|90|95"},
-        {"mupen64plus-r-cbutton",
-           "Right C Button; C1|C2|C3|C4"},
-        {"mupen64plus-l-cbutton",
-           "Left C Button; C2|C3|C4|C1"},
-        {"mupen64plus-d-cbutton",
-           "Down C Button; C3|C4|C1|C2"},
-        {"mupen64plus-u-cbutton",
-           "Up C Button; C4|C1|C2|C3"},
         {"mupen64plus-pak1",
            "Player 1 Pak; memory|rumble|none"},
         {"mupen64plus-pak2",
@@ -261,7 +195,6 @@ static void setup_variables(void)
     environ_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables);
     environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
 }
-
 
 static bool emu_step_load_data()
 {
@@ -305,9 +238,31 @@ static void emu_step_initialize(void)
     if (emu_initialized)
         return;
 
-    emu_initialized = true;
+   struct retro_variable gfx_var = { "parallel-n64-gfxplugin", 0 };
+   struct retro_variable rsp_var = { "parallel-n64-rspplugin", 0 };
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-    plugin_connect_all();
+  if(gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
+  gfx_plugin = GFX_ANGRYLION;
+#ifdef HAVE_PARALLEL
+	  if(gfx_var.value && !strcmp(gfx_var.value, "parallel") && vulkan_inited)
+         gfx_plugin = GFX_PARALLEL;
+#endif
+
+ if (vulkan_inited)
+   {
+#if defined(HAVE_PARALLEL_RSP)
+      rsp_plugin = RSP_PARALLEL;
+#else
+      rsp_plugin = RSP_CXD4;
+#endif
+   }
+
+   if (gfx_plugin == GFX_ANGRYLION)
+   rsp_plugin = RSP_CXD4;
+   emu_initialized = true;
+   plugin_connect_all(gfx_plugin, rsp_plugin);
 }
 
 static void EmuThreadFunction(void)
@@ -352,17 +307,11 @@ void retro_set_environment(retro_environment_t cb)
 
 void retro_get_system_info(struct retro_system_info *info)
 {
-#if defined(HAVE_OPENGLES2)
-    info->library_name = "Mupen64Plus-Next GLES2";
-#elif defined(HAVE_OPENGLES3)
-    info->library_name = "Mupen64Plus-Next GLES3";
-#else
-    info->library_name = "Mupen64Plus-Next OpenGL";
-#endif
+    info->library_name = "paraLLeXT";
 #ifndef GIT_VERSION
 #define GIT_VERSION " git"
 #endif
-    info->library_version = "1.0" GIT_VERSION;
+    info->library_version = "0.1" GIT_VERSION;
     info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
     info->need_fullpath = false;
     info->block_extract = false;
@@ -508,33 +457,6 @@ void update_variables()
 {
     struct retro_variable var;
 
-    var.key = "mupen64plus-rspmode";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "HLE"))
-            rspMode = 0;
-        else
-            rspMode = 1;
-    }
-
-    var.key = "mupen64plus-BilinearMode";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "3point"))
-            bilinearMode = 0;
-        else
-            bilinearMode = 1;
-    }
-
-    var.key = "mupen64plus-MultiSampling";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        MultiSampling = atoi(var.value);
-    }
-
     var.key = "mupen64plus-FrameDuping";
     var.value = NULL;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -563,216 +485,6 @@ void update_variables()
             CountPerScanlineOverride = 0;
         else
             CountPerScanlineOverride = atoi(var.value);
-    }
-
-    var.key = "mupen64plus-NoiseEmulation";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "False"))
-            EnableNoiseEmulation = 0;
-        else
-            EnableNoiseEmulation = 1;
-    }
-
-    var.key = "mupen64plus-EnableLODEmulation";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "False"))
-            EnableLODEmulation = 0;
-        else
-            EnableLODEmulation = 1;
-    }
-
-    var.key = "mupen64plus-EnableFBEmulation";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "False"))
-            EnableFBEmulation = 0;
-        else
-            EnableFBEmulation = 1;
-    }
-
-    var.key = "mupen64plus-EnableCopyColorToRDRAM";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "Async"))
-            EnableCopyColorToRDRAM = 2;
-        else if (!strcmp(var.value, "Sync"))
-            EnableCopyColorToRDRAM = 1;
-        else
-            EnableCopyColorToRDRAM = 0;
-    }
-
-    var.key = "mupen64plus-EnableCopyDepthToRDRAM";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "Software"))
-            EnableCopyDepthToRDRAM = 2;
-        else if (!strcmp(var.value, "FromMem"))
-            EnableCopyDepthToRDRAM = 1;
-        else
-            EnableCopyDepthToRDRAM = 0;
-    }
-
-    var.key = "mupen64plus-EnableHWLighting";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            EnableHWLighting = 1;
-        else
-            EnableHWLighting = 0;
-    }
-
-    var.key = "mupen64plus-CorrectTexrectCoords";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "Force"))
-            CorrectTexrectCoords = 2;
-        else if (!strcmp(var.value, "Auto"))
-            CorrectTexrectCoords = 1;
-        else
-            CorrectTexrectCoords = 0;
-    }
-
-    var.key = "mupen64plus-EnableNativeResTexrects";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            enableNativeResTexrects = 1;
-        else
-            enableNativeResTexrects = 0;
-    }
-
-    var.key = "mupen64plus-txFilterMode";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "Smooth filtering 1"))
-            txFilterMode = 1;
-        else if (!strcmp(var.value, "Smooth filtering 2"))
-            txFilterMode = 2;
-        else if (!strcmp(var.value, "Smooth filtering 3"))
-            txFilterMode = 3;
-        else if (!strcmp(var.value, "Smooth filtering 4"))
-            txFilterMode = 4;
-        else if (!strcmp(var.value, "Sharp filtering 1"))
-            txFilterMode = 5;
-        else if (!strcmp(var.value, "Sharp filtering 2"))
-            txFilterMode = 6;
-        else
-            txFilterMode = 0;
-    }
-
-    var.key = "mupen64plus-txEnhancementMode";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "As Is"))
-            txEnhancementMode = 1;
-        else if (!strcmp(var.value, "X2"))
-            txEnhancementMode = 2;
-        else if (!strcmp(var.value, "X2SAI"))
-            txEnhancementMode = 3;
-        else if (!strcmp(var.value, "HQ2X"))
-            txEnhancementMode = 4;
-        else if (!strcmp(var.value, "HQ2XS"))
-            txEnhancementMode = 5;
-        else if (!strcmp(var.value, "LQ2X"))
-            txEnhancementMode = 6;
-        else if (!strcmp(var.value, "LQ2XS"))
-            txEnhancementMode = 7;
-        else if (!strcmp(var.value, "HQ4X"))
-            txEnhancementMode = 8;
-        else if (!strcmp(var.value, "2xBRZ"))
-            txEnhancementMode = 9;
-        else if (!strcmp(var.value, "3xBRZ"))
-            txEnhancementMode = 10;
-        else if (!strcmp(var.value, "4xBRZ"))
-            txEnhancementMode = 11;
-        else if (!strcmp(var.value, "5xBRZ"))
-            txEnhancementMode = 12;
-        else if (!strcmp(var.value, "6xBRZ"))
-            txEnhancementMode = 13;
-        else
-            txEnhancementMode = 0;
-    }
-
-    var.key = "mupen64plus-txFilterIgnoreBG";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            txFilterIgnoreBG = 0;
-        else
-            txFilterIgnoreBG = 1;
-    }
-
-    var.key = "mupen64plus-txHiresEnable";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            txHiresEnable = 1;
-        else
-            txHiresEnable = 0;
-    }
-
-    var.key = "mupen64plus-txHiresFullAlphaChannel";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            txHiresFullAlphaChannel = 1;
-        else
-            txHiresFullAlphaChannel = 0;
-    }
-
-    var.key = "mupen64plus-EnableLegacyBlending";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            enableLegacyBlending = 1;
-        else
-            enableLegacyBlending = 0;
-    }
-
-    var.key = "mupen64plus-EnableFragmentDepthWrite";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            EnableFragmentDepthWrite = 1;
-        else
-            EnableFragmentDepthWrite = 0;
-    }
-
-    var.key = "mupen64plus-EnableShadersStorage";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "True"))
-            EnableShadersStorage = 1;
-        else
-            EnableShadersStorage = 0;
-    }
-
-    var.key = "mupen64plus-CropMode";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "Auto"))
-            CropMode = 1;
-        else
-            CropMode = 0;
     }
 
     var.key = "mupen64plus-cpucore";
@@ -915,56 +627,59 @@ static void format_saved_memory(void)
     format_mempak(saved_memory.mempack + 3 * MEMPAK_SIZE);
 }
 
-static void context_reset(void)
+
+static bool retro_init_vulkan(void)
 {
-    static bool first_init = true;
-    printf("context_reset.\n");
-    glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+#if defined(HAVE_PARALLEL)
+   hw_render.context_type    = RETRO_HW_CONTEXT_VULKAN;
+   hw_render.version_major   = VK_MAKE_VERSION(1, 0, 12);
+   hw_render.context_reset   = context_reset;
+   hw_render.context_destroy = context_destroy;
 
-    if (first_init)
-    {
-        glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
-        first_init = false;
-    }
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have Vulkan support.\n");
+      return false;
+   }
 
-    reinit_gfx_plugin();
-}
+   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
+   hw_context_negotiation.get_application_info = parallel_get_application_info;
+   hw_context_negotiation.create_device = parallel_create_device;
+   hw_context_negotiation.destroy_device = NULL;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have context negotiation support.\n");
+   }
 
-static void context_destroy(void)
-{
-    glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
-}
-
-static bool context_framebuffer_lock(void *data)
-{
-    //if (!stop)
-     //   return false;
-    return true;
+   return true;
+#else
+   return false;
+#endif
 }
 
 bool retro_load_game(const struct retro_game_info *game)
 {
-    glsm_ctx_params_t params = {0};
     format_saved_memory();
 
     update_variables();
     initial_boot = false;
 
+if (gfx_plugin != GFX_ANGRYLION)
+   {
+      if (retro_init_vulkan())
+         vulkan_inited = true;
+   }
+
+   if (vulkan_inited)
+   {
+     gfx_plugin = GFX_PARALLEL;
+   }
+
+
     init_audio_libretro(audio_buffer_size);
-
-    params.context_reset         = context_reset;
-    params.context_destroy       = context_destroy;
-    params.environ_cb            = environ_cb;
-    params.stencil               = false;
-
-    params.framebuffer_lock      = context_framebuffer_lock;
-
-    if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
-    {
-        if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: libretro frontend doesn't have OpenGL support.");
-        return false;
-    }
 
     game_data = malloc(game->size);
     memcpy(game_data, game->data, game->size);
@@ -1007,12 +722,34 @@ void retro_run (void)
     static bool updated = false;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
         update_controllers();
-    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
+
+
     co_switch(game_thread);
-    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
     if (libretro_swap_buffer)
-        video_cb(RETRO_HW_FRAME_BUFFER_VALID, retro_screen_width, retro_screen_height, 0);
+    {
+ switch (gfx_plugin)
+      {
+         case GFX_ANGRYLION:
+            video_cb(blitter_buf_lock, screen_width, screen_height, screen_pitch);
+            break;
+
+         case GFX_PARALLEL:
+#if defined(HAVE_PARALLEL)
+            video_cb(parallel_frame_is_valid() ? RETRO_HW_FRAME_BUFFER_VALID : NULL,
+                  parallel_frame_width(), parallel_frame_height(), 0);
+#endif
+            break;
+
+         default:
+            video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
+            break;
+      }
+
+}
     else if(EnableFrameDuping)
+{
+
+}
         video_cb(NULL, retro_screen_width, retro_screen_height, 0);
 }
 
@@ -1151,7 +888,9 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 
 void retro_return(void)
 {
+    libretro_swap_buffer = true;
     co_switch(retro_thread);
+    
 }
 
 uint32_t get_retro_screen_width()

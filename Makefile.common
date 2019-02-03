@@ -91,7 +91,7 @@ SOURCES_C = \
 	$(CORE_DIR)/src/main/cheat.c \
 	$(CORE_DIR)/src/main/rom.c \
 	$(CORE_DIR)/src/main/savestates.c \
-    $(ROOT_DIR)/custom/mupen64plus-core/plugin/plugin.c \
+        $(CORE_DIR)/src/plugin/plugin.c \
 	$(CORE_DIR)/src/plugin/dummy_audio.c \
 	$(CORE_DIR)/src/plugin/dummy_input.c
 
