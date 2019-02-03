@@ -94,6 +94,8 @@ uint32_t *blitter_buf_lock          = NULL;
 uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
 uint32_t screen_pitch               = 0;
+enum gfx_plugin_type gfx_plugin;
+enum rsp_plugin_type rsp_plugin;
 
 int rspMode = 0;
 
@@ -141,11 +143,13 @@ static void setup_variables(void)
 #if defined(HAVE_PARALLEL)
             "|parallel"
 #endif
+      },
       { "parallel-n64-rspplugin",
          "RSP Plugin; cxd4"
 #ifdef HAVE_PARALLEL_RSP
          "|parallel"
 #endif
+      },
        { "parallel-n64-angrylion-vioverlay",
        "(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
        },
@@ -156,8 +160,6 @@ static void setup_variables(void)
 
        { "parallel-n64-screensize",
          "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },	
-        { "mupen64plus-FrameDuping",
-            "Frame Duplication; False|True" },
         { "mupen64plus-Framerate",
             "Framerate; Original|Fullspeed" },
         { "mupen64plus-virefresh",
@@ -273,15 +275,6 @@ static void EmuThreadFunction(void)
     CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 }
 
-void reinit_gfx_plugin(void)
-{
-    if(first_context_reset)
-    {
-        first_context_reset = false;
-        emu_step_initialize();
-    }
-}
-
 const char* retro_get_system_directory(void)
 {
     const char* dir;
@@ -323,7 +316,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
     info->geometry.base_height  = retro_screen_height;
     info->geometry.max_width    = retro_screen_width;
     info->geometry.max_height   = retro_screen_height;
-    info->geometry.aspect_ratio = retro_screen_aspect;
+    info->geometry.aspect_ratio = 4.0 / 3.0;
     info->timing.fps = vi_expected_refresh_rate_from_tv_standard(ROM_PARAMS.systemtype);
     info->timing.sample_rate = 44100.0;
 }
@@ -457,26 +450,6 @@ void update_variables()
 {
     struct retro_variable var;
 
-    var.key = "mupen64plus-FrameDuping";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "False"))
-            EnableFrameDuping = 0;
-        else
-            EnableFrameDuping = 1;
-    }
-
-    var.key = "mupen64plus-Framerate";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "Original"))
-            EnableFullspeed = 0;
-        else
-            EnableFullspeed = 1;
-    }
-
     var.key = "mupen64plus-virefresh";
     var.value = NULL;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -499,33 +472,6 @@ void update_variables()
              emumode = EMUMODE_DYNAREC;
     }
 
-    var.key = "mupen64plus-aspect";
-    var.value = NULL;
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "16:9 adjusted")) {
-             AspectRatio = 3;
-             retro_screen_aspect = 16.0 / 9.0;
-        } else if (!strcmp(var.value, "16:9")) {
-             AspectRatio = 2;
-             retro_screen_aspect = 16.0 / 9.0;
-        } else {
-             AspectRatio = 1;
-             retro_screen_aspect = 4.0 / 3.0;
-        }
-    }
-
-    if (AspectRatio == 1)
-        var.key = "mupen64plus-43screensize";
-    else
-        var.key = "mupen64plus-169screensize";
-    var.value = NULL;
-
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        sscanf(var.value, "%dx%d", &retro_screen_width, &retro_screen_height);
-    }
-
     var.key = "mupen64plus-astick-deadzone";
     var.value = NULL;
 
@@ -545,74 +491,6 @@ void update_variables()
         CountPerOp = atoi(var.value);
     }
 
-    if(EnableFullspeed)
-    {
-        CountPerOp = 1; // Force CountPerOp == 1
-        if(!EnableFBEmulation)
-        {
-            EnableFrameDuping = 1;
-        }
-    }
-
-    var.key = "mupen64plus-r-cbutton";
-    var.value = NULL;
-
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "C1"))
-            r_cbutton = RETRO_DEVICE_ID_JOYPAD_A;
-        else if (!strcmp(var.value, "C2"))
-            r_cbutton = RETRO_DEVICE_ID_JOYPAD_Y;
-        else if (!strcmp(var.value, "C3"))
-            r_cbutton = RETRO_DEVICE_ID_JOYPAD_B;
-        else if (!strcmp(var.value, "C4"))
-            r_cbutton = RETRO_DEVICE_ID_JOYPAD_X;
-    }
-
-    var.key = "mupen64plus-l-cbutton";
-    var.value = NULL;
-
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "C1"))
-            l_cbutton = RETRO_DEVICE_ID_JOYPAD_A;
-        else if (!strcmp(var.value, "C2"))
-            l_cbutton = RETRO_DEVICE_ID_JOYPAD_Y;
-        else if (!strcmp(var.value, "C3"))
-            l_cbutton = RETRO_DEVICE_ID_JOYPAD_B;
-        else if (!strcmp(var.value, "C4"))
-            l_cbutton = RETRO_DEVICE_ID_JOYPAD_X;
-    }
-
-    var.key = "mupen64plus-d-cbutton";
-    var.value = NULL;
-
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "C1"))
-            d_cbutton = RETRO_DEVICE_ID_JOYPAD_A;
-        else if (!strcmp(var.value, "C2"))
-            d_cbutton = RETRO_DEVICE_ID_JOYPAD_Y;
-        else if (!strcmp(var.value, "C3"))
-            d_cbutton = RETRO_DEVICE_ID_JOYPAD_B;
-        else if (!strcmp(var.value, "C4"))
-            d_cbutton = RETRO_DEVICE_ID_JOYPAD_X;
-    }
-
-    var.key = "mupen64plus-u-cbutton";
-    var.value = NULL;
-
-    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
-        if (!strcmp(var.value, "C1"))
-            u_cbutton = RETRO_DEVICE_ID_JOYPAD_A;
-        else if (!strcmp(var.value, "C2"))
-            u_cbutton = RETRO_DEVICE_ID_JOYPAD_Y;
-        else if (!strcmp(var.value, "C3"))
-            u_cbutton = RETRO_DEVICE_ID_JOYPAD_B;
-        else if (!strcmp(var.value, "C4"))
-            u_cbutton = RETRO_DEVICE_ID_JOYPAD_X;
-    }
     update_controllers();
 }
 
@@ -688,7 +566,7 @@ if (gfx_plugin != GFX_ANGRYLION)
     if (!emu_step_load_data())
         return false;
 
-    first_context_reset = true;
+    emu_step_initialize();
 
     return true;
 }
@@ -746,11 +624,6 @@ void retro_run (void)
       }
 
 }
-    else if(EnableFrameDuping)
-{
-
-}
-        video_cb(NULL, retro_screen_width, retro_screen_height, 0);
 }
 
 void retro_reset (void)

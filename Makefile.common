@@ -12,6 +12,7 @@ DYNAREC_USED := 0
 
 INCFLAGS += \
 	-I$(ROOT_DIR)/custom \
+	-I$(ROOT_DIR)/custom/osal \
 	-I$(ROOT_DIR)/custom/mupen64plus-core \
 	-I$(ROOT_DIR)/custom/android/include \
 	-I$(CORE_DIR)/src \
