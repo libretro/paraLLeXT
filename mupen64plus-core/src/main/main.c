@@ -199,10 +199,10 @@ static void main_check_inputs(void)
 /*********************************************************************************************************
 * global functions, for adjusting the core emulator behavior
 */
-extern void Config_LoadConfig();
+//extern void Config_LoadConfig();
 int main_set_core_defaults(void)
 {
-    Config_LoadConfig();
+   // Config_LoadConfig();
     return 1;
 }
 
