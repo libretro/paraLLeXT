@@ -608,7 +608,7 @@ void retro_run(void)
 
 
 	co_switch(game_thread);
-	if (libretro_swap_buffer)
+	//if (libretro_swap_buffer)
 	{
 		switch (gfx_plugin)
 		{
@@ -776,12 +776,12 @@ void retro_return(void)
 
 uint32_t get_retro_screen_width()
 {
-	return retro_screen_width;
+	return screen_width;
 }
 
 uint32_t get_retro_screen_height()
 {
-	return retro_screen_height;
+	return screen_height;
 }
 
 static int GamesharkActive = 0;
