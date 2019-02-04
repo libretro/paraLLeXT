@@ -79,10 +79,11 @@ static bool     emu_initialized = false;
 static unsigned initial_boot = true;
 static unsigned audio_buffer_size = 2048;
 static bool vulkan_inited = false;
-static unsigned retro_filtering = 0;
 static bool     first_context_reset = false;
 static bool     initializing = true;
 
+static unsigned retro_filtering     = 0;
+static unsigned retro_dithering     = 0;
 uint32_t retro_screen_width = 320;
 uint32_t retro_screen_height = 240;
 float retro_screen_aspect = 4.0 / 3.0;
@@ -150,6 +151,8 @@ static void setup_variables(void)
 		 "|parallel"
 #endif
 	},
+	{ "parallel-n64-dithering",
+		 "Dithering; enabled|disabled" },
 	{ "parallel-n64-angrylion-vioverlay",
 	"(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
 	},
@@ -451,6 +454,49 @@ void update_controllers()
 	}
 }
 
+extern void angrylion_set_vi(unsigned value);
+extern void angrylion_set_filtering(unsigned value);
+extern void angrylion_set_dithering(unsigned value);
+extern void  angrylion_set_threads(unsigned value);
+extern void parallel_set_dithering(unsigned value);
+extern void  angrylion_set_threads(unsigned value);
+extern void  angrylion_set_overscan(unsigned value);
+
+static void gfx_set_filtering(void)
+{
+     if (log_cb)
+        log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
+     switch (gfx_plugin)
+     {
+        case GFX_ANGRYLION:
+           angrylion_set_filtering(retro_filtering);
+           break;
+     }
+}
+
+unsigned setting_get_dithering(void)
+{
+   return retro_dithering;
+}
+
+static void gfx_set_dithering(void)
+{
+   if (log_cb)
+      log_cb(RETRO_LOG_DEBUG, "set dithering mode...\n");
+
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:
+         angrylion_set_dithering(retro_dithering);
+         break;
+      case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+         parallel_set_dithering(retro_dithering);
+#endif
+         break;
+     }
+}
+
 void update_variables()
 {
 	struct retro_variable var;
@@ -495,6 +541,97 @@ void update_variables()
 	{
 		CountPerOp = atoi(var.value);
 	}
+
+	#if defined(HAVE_PARALLEL)
+   var.key = "parallel-n64-parallel-rdp-synchronous";
+   var.value = NULL;
+
+   bool rdp_sync;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "enabled"))
+         rdp_sync = true;
+      else
+         rdp_sync = false;
+   }
+   else
+      rdp_sync = true;
+   parallel_set_synchronous_rdp(rdp_sync);
+#endif
+
+ var.key = "parallel-n64-angrylion-vioverlay";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "Filtered"))
+         angrylion_set_vi(0);
+      else if(!strcmp(var.value, "Unfiltered"))
+         angrylion_set_vi(1);
+      else if(!strcmp(var.value, "Depth"))
+         angrylion_set_vi(2);
+      else if(!strcmp(var.value, "Coverage"))
+         angrylion_set_vi(3);
+   }
+   else
+      angrylion_set_vi(0);
+
+   var.key = "parallel-n64-angrylion-multithread";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         angrylion_set_threads(0);
+      else if(!strcmp(var.value, "disabled"))
+         angrylion_set_threads(1);
+   }
+   else
+      angrylion_set_threads(0);
+
+   var.key = "parallel-n64-angrylion-overscan";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "enabled"))
+         angrylion_set_overscan(1);
+      else if(!strcmp(var.value, "disabled"))
+         angrylion_set_overscan(0);
+   }
+   else
+      angrylion_set_overscan(0);
+
+	   var.key = "parallel-n64-dithering";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      static signed old_dithering = -1;
+
+      if (!strcmp(var.value, "enabled"))
+         retro_dithering = 1;
+      else if (!strcmp(var.value, "disabled"))
+         retro_dithering = 0;
+
+      gfx_set_dithering();
+
+      old_dithering      = retro_dithering;
+   }
+   else
+   {
+      retro_dithering = 1;
+      gfx_set_dithering();
+   }
+
+
+
 
 	update_controllers();
 }
