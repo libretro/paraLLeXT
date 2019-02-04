@@ -26,15 +26,7 @@ ifneq (,$(findstring win,$(platform)))
 	INCFLAGS += -I$(ROOT_DIR)/custom/mman-win32
 endif
 
-SOURCES_C += \
-	$(ROOT_DIR)/custom/mupen64plus-rsp-cxd4/module.c \
-	$(CXD4DIR)/su.c \
-	$(CXD4DIR)/vu/add.c \
-	$(CXD4DIR)/vu/divide.c \
-	$(CXD4DIR)/vu/logical.c \
-	$(CXD4DIR)/vu/multiply.c \
-	$(CXD4DIR)/vu/select.c \
-	$(CXD4DIR)/vu/vu.c
+
 
 SOURCES_C = \
 	$(CORE_DIR)/src/asm_defines/asm_defines.c \
@@ -201,13 +193,14 @@ SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video.c \
 
 SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
 
+SOURCES_C += $(CXD4DIR)/rsp.c 
+
 ifeq ($(HAVE_NEON),1)
 
 	SOURCES_ASM += $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16_neon.S \
 						$(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float_neon.S \
 						$(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler_neon.S
 endif
-
 
 ifeq ($(HAVE_PARALLEL),1)
 CFLAGS   += -DHAVE_PARALLEL
