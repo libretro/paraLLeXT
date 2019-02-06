@@ -387,6 +387,8 @@ void retro_deinit(void)
 
 	if (perf_cb.perf_log)
 		perf_cb.perf_log();
+	if(blitter_buf)
+		free(blitter_buf);
 }
 
 void update_controllers()
