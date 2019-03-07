@@ -20,7 +20,6 @@ extern "C" {
 #include "m64p_types.h"
 #include "m64p_config.h"
 
-	int retro_return(bool just_flipping);
 
 #ifdef __cplusplus
 }

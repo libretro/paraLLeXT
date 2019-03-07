@@ -383,6 +383,8 @@ void retro_init(void)
 void retro_deinit(void)
 {
 	CoreDoCommand(M64CMD_STOP, 0, NULL);
+	co_switch(game_thread);
+
 	deinit_audio_libretro();
 
 	if (perf_cb.perf_log)
@@ -772,7 +774,7 @@ void retro_run(void)
 
 void retro_reset(void)
 {
-	CoreDoCommand(M64CMD_RESET, 1, (void*)0);
+	CoreDoCommand(M64CMD_RESET, 0, (void*)0);
 }
 
 void *retro_get_memory_data(unsigned type)

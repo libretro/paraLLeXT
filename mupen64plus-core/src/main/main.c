@@ -35,6 +35,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libco.h>
+
 #define M64P_CORE_PROTOTYPES 1
 #include "api/callbacks.h"
 #include "api/config.h"
@@ -1271,15 +1273,6 @@ m64p_error main_run(void)
         }
     }
 
-    igbcam_backend->close(gbcam_backend);
-    igbcam_backend->release(gbcam_backend);
-
-    close_file_storage(&sra);
-    close_file_storage(&fla);
-    close_file_storage(&eep);
-    close_file_storage(&mpk);
-    close_file_storage(&dd_disk);
-
     rsp.romClosed();
     input.romClosed();
     audio.romClosed();
@@ -1288,6 +1281,9 @@ m64p_error main_run(void)
     // clean up
     g_EmulatorRunning = 0;
     StateChanged(M64CORE_EMU_STATE, M64EMU_STOPPED);
+
+    extern cothread_t retro_thread;
+    co_switch(retro_thread);
 
     return M64ERR_SUCCESS;
 
@@ -1303,16 +1299,6 @@ on_gfx_open_failure:
             release_gb_ram(&l_gb_carts_data[i]);
         }
     }
-
-    igbcam_backend->close(gbcam_backend);
-    igbcam_backend->release(gbcam_backend);
-
-    /* release storage files */
-    close_file_storage(&sra);
-    close_file_storage(&fla);
-    close_file_storage(&eep);
-    close_file_storage(&mpk);
-    close_file_storage(&dd_disk);
 
     return M64ERR_PLUGIN_FAIL;
 }
