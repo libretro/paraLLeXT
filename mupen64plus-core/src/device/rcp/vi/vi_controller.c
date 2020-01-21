@@ -189,3 +189,4 @@ void vi_vertical_interrupt_event(void* opaque)
     /* trigger interrupt */
     raise_rcp_interrupt(vi->mi, MI_INTR_VI);
 }
+
