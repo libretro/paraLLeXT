@@ -30,6 +30,19 @@
 #include "device/pif/pif.h"
 #include "libretro_memory.h"
 
+
+
+#include "../mupen64plus-video-angrylion/vdac.h"
+
+
+#ifndef PRESCALE_WIDTH
+#define PRESCALE_WIDTH  640
+#endif
+
+#ifndef PRESCALE_HEIGHT
+#define PRESCALE_HEIGHT 625
+#endif
+
 #include "audio_plugin.h"
 
 #if defined(HAVE_PARALLEL)
@@ -38,14 +51,6 @@
 static struct retro_hw_render_callback hw_render;
 static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_negotiation;
 static const struct retro_hw_render_interface_vulkan *vulkan;
-#endif
-
-#ifndef PRESCALE_WIDTH
-#define PRESCALE_WIDTH  640
-#endif
-
-#ifndef PRESCALE_HEIGHT
-#define PRESCALE_HEIGHT 625
 #endif
 
 #define PATH_SIZE 2048
@@ -160,6 +165,9 @@ static void setup_variables(void)
 	  "(Angrylion) Multi-threading; enabled|disabled" },
 	{ "parallel-n64-angrylion-overscan",
 	  "(Angrylion) Hide overscan; disabled|enabled" },
+	   { "parallel-n64-angrylion-sync",
+       "(Angrylion) Thread sync level; Medium|High|Low"
+      },
 
 	{ "parallel-n64-screensize",
 	  "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },
@@ -237,6 +245,12 @@ load_fail:
 
 	return false;
 }
+
+
+
+extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+
+
 
 static void emu_step_initialize(void)
 {
@@ -371,11 +385,6 @@ void retro_init(void)
 	environ_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble);
 	initializing = true;
 
-	blitter_buf = (uint32_t*)calloc(
-		PRESCALE_WIDTH * PRESCALE_HEIGHT, sizeof(uint32_t)
-	);
-	blitter_buf_lock = blitter_buf;
-
 	retro_thread = co_active();
 	game_thread = co_create(65536 * sizeof(void*) * 16, EmuThreadFunction);
 }
@@ -389,8 +398,6 @@ void retro_deinit(void)
 
 	if (perf_cb.perf_log)
 		perf_cb.perf_log();
-	if(blitter_buf)
-		free(blitter_buf);
 }
 
 void update_controllers()
@@ -465,6 +472,8 @@ extern void  angrylion_set_threads(unsigned value);
 extern void parallel_set_dithering(unsigned value);
 extern void  angrylion_set_threads(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
+
+extern void angrylion_set_synclevel(unsigned value);
 
 static void gfx_set_filtering(void)
 {
@@ -596,6 +605,24 @@ void update_variables()
    }
    else
       angrylion_set_threads(0);
+
+
+	 var.key = "parallel-n64-angrylion-sync";
+   var.value = NULL;
+
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+
+   if (var.value)
+   {
+      if(!strcmp(var.value, "High"))
+         angrylion_set_synclevel(2);
+      else if(!strcmp(var.value, "Medium"))
+         angrylion_set_synclevel(1);
+      else if(!strcmp(var.value, "Low"))
+         angrylion_set_synclevel(0);
+   }
+   else
+      angrylion_set_synclevel(1);
 
    var.key = "parallel-n64-angrylion-overscan";
    var.value = NULL;
@@ -754,7 +781,7 @@ void retro_run(void)
 		switch (gfx_plugin)
 		{
 		case GFX_ANGRYLION:
-			video_cb(blitter_buf_lock, screen_width, screen_height, screen_pitch);
+            video_cb(prescale, screen_width, screen_height, screen_pitch);
 			break;
 
 		case GFX_PARALLEL:
