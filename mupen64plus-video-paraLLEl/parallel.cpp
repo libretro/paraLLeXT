@@ -13,6 +13,8 @@ extern "C" {
 #include "rdp_dump.h"
 #endif
 
+extern int retro_return(bool just_flipping);
+
 void parallelChangeWindow(void)
 {
 }
@@ -89,6 +91,7 @@ int parallelRomOpen(void)
 void parallelUpdateScreen(void)
 {
 	VI::complete_frame();
+	retro_return(true);
 }
 
 void parallelShowCFB(void)

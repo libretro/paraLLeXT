@@ -36,6 +36,7 @@ void RSP_DEBUG(RSP::CPUState *rsp, const char *tag, unsigned pc, unsigned value)
 namespace RSP
 {
 CPU::CPU()
+    : jit_engine(symbol_table)
 {
    init_symbol_table();
 }
@@ -1238,7 +1239,7 @@ DECL_COP2(RESERVED);
    full_code += body;
    full_code += "}\n";
 
-   unique_ptr<Block> block(new Block(symbol_table));
+   unique_ptr<Block> block(new Block(jit_engine));
    if (!block->compile(hash, full_code))
       return nullptr;
 
@@ -1302,10 +1303,14 @@ void CPU::print_registers()
 
 void CPU::exit(ReturnMode mode)
 {
-#ifdef _WIN32
-   longjmp(env, mode);
+#ifdef __GNUC__
+   // On Windows, setjmp/longjmp crashes since it uses exception unwinding semantics
+   // and our JIT-ed LLVM code does not emit that kind of information, so we have to use a non-standard unwinding mechanism.
+   // FWIW, this should also be the fastest possible way of doing it.
+   return_mode = mode;
+   __builtin_longjmp(env, 1);
 #else
-   siglongjmp(env, mode);
+#error "Need __builtin_setjmp/longjmp support alternative for other compilers ..."
 #endif
 }
 
@@ -1367,7 +1372,7 @@ void CPU::enter(uint32_t pc)
          //static unsigned count;
          //fprintf(stderr, "JIT region #%u\n", ++count);
          block = jit_region(hash, word_pc, end - word_pc);
-         fprintf(stdout, "jit compile");
+         //fprintf(stdout, "jit compile");
       }
    }
    //fprintf(stdout, "jit execute");
@@ -1380,10 +1385,15 @@ ReturnMode CPU::run()
    {
       invalidate_code();
       call_stack_ptr = 0;
-#ifdef _WIN32
-      auto ret = static_cast<ReturnMode>(setjmp(env));
+
+#ifdef __GNUC__
+      // On Windows, setjmp/longjmp crashes since it uses exception unwinding semantics
+      // and our JIT-ed LLVM code does not emit that kind of information, so we have to use a non-standard unwinding mechanism.
+      // FWIW, this should also be the fastest possible way of doing it.
+      int setjmp_ret = __builtin_setjmp(env);
+      auto ret = setjmp_ret ? return_mode : MODE_ENTER;
 #else
-      auto ret = static_cast<ReturnMode>(sigsetjmp(env, 0));
+#error "Need __builtin_setjmp/longjmp support alternative for other compilers ..."
 #endif
 
       switch (ret)

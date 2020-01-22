@@ -73,6 +73,8 @@ namespace RSP
       private:
          CPUState state;
          Func blocks[IMEM_WORDS] = {};
+         std::unordered_map<std::string, uint64_t> symbol_table;
+         JIT::LLVMEngine jit_engine;
          std::unordered_map<uint64_t, std::unique_ptr<Block>> cached_blocks[IMEM_WORDS];
 
          void invalidate_code();
@@ -82,7 +84,6 @@ namespace RSP
          std::string full_code;
          std::string body;
 
-         std::unordered_map<std::string, uint64_t> symbol_table;
 
          void init_symbol_table();
          void print_registers();
@@ -90,10 +91,12 @@ namespace RSP
          alignas(64) uint32_t cached_imem[IMEM_WORDS]  = {};
 
          // Platform specific.
-#ifdef _WIN32
-         jmp_buf env;
+#ifdef __GNUC__
+         intptr_t env[64];
+         // We're reading this after setjmp returns so need to make sure the read happens when we expect it to.
+         volatile ReturnMode return_mode;
 #else
-         sigjmp_buf env;
+#error "Need __builtin_setjmp/longjmp support alternative for other compilers ..."
 #endif
 
 #define CALL_STACK_SIZE 32
