@@ -47,7 +47,7 @@ extern "C" {
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-struct n64video_config config;
+struct n64video_config config_al;
 
 #include <ctype.h>
 
@@ -196,13 +196,13 @@ void screen_close(void)
 void angrylion_set_vi(unsigned value)
 {
  
-   if(config.vi.mode != (vi_mode)value)
+   if(config_al.vi.mode != (vi_mode)value)
    {
-      config.vi.mode = (vi_mode)value;
+      config_al.vi.mode = (vi_mode)value;
       if (angrylion_init)
       {
           n64video_close();
-          n64video_init(&config);
+          n64video_init(&config_al);
       }
    }
 }
@@ -210,13 +210,13 @@ void angrylion_set_vi(unsigned value)
 void angrylion_set_threads(unsigned value)
 {
   
-    if(config.num_workers != value)
+    if(config_al.num_workers != value)
     {
-     config.num_workers = value;
+     config_al.num_workers = value;
      if (angrylion_init)
      {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config_al);
      }
     }
     
@@ -225,14 +225,14 @@ void angrylion_set_threads(unsigned value)
 void angrylion_set_overscan(unsigned value)
 {
   
-    if(config.vi.hide_overscan != (bool)value)
+    if(config_al.vi.hide_overscan != (bool)value)
     
     {
-    config.vi.hide_overscan = (bool)value;
+    config_al.vi.hide_overscan = (bool)value;
     if (angrylion_init)
     {
         n64video_close();
-        n64video_init(&config);
+        n64video_init(&config_al);
     }
     }
     
@@ -240,31 +240,31 @@ void angrylion_set_overscan(unsigned value)
 
 void angrylion_set_synclevel(unsigned value)
 {
-if(config.dp.compat != (dp_compat_profile)value)
+if(config_al.dp.compat != (dp_compat_profile)value)
 {
-    config.dp.compat= (dp_compat_profile)value;
+    config_al.dp.compat= (dp_compat_profile)value;
     if (angrylion_init)
     {
         n64video_close();
-        n64video_init(&config);
+        n64video_init(&config_al);
     }
 }
 }
 
 unsigned angrylion_get_synclevel()
 {
-    return config.dp.compat;
+    return config_al.dp.compat;
 }
 
 unsigned angrylion_get_threads()
 {
-    return  config.num_workers;
+    return  config_al.num_workers;
 }
 
 
 unsigned angrylion_get_vi()
 {
-    return config.vi.mode;
+    return config_al.vi.mode;
 }
 
 
@@ -273,20 +273,20 @@ void angrylion_set_filtering(unsigned filter_type)
     if(filter_type!=2)filter_type=1;
     else
     filter_type=0;
-    if(config.vi.interp != (vi_interp)filter_type)
+    if(config_al.vi.interp != (vi_interp)filter_type)
     {
-    config.vi.interp = (vi_interp)filter_type;
+    config_al.vi.interp = (vi_interp)filter_type;
     if (angrylion_init)
     {
         n64video_close();
-        n64video_init(&config);
+        n64video_init(&config_al);
     }
     }
 }
 
 unsigned angrylion_get_filtering()
 {
-    return  (unsigned)config.vi.interp;
+    return  (unsigned)config_al.vi.interp;
 }
 
 void angrylion_set_dithering(unsigned dither_type)
@@ -328,7 +328,7 @@ void angrylionSetRenderingCallback(void (*callback)(int))
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-   n64video_config_init(&config);
+   n64video_config_init(&config_al);
    return 0;
 }
 
@@ -375,19 +375,19 @@ int angrylionRomOpen(void)
 
    screen_pitch  = 640 << 2;
 
-  config.gfx.rdram = plugin_get_rdram();
-    config.gfx.rdram_size = plugin_get_rdram_size();
+  config_al.gfx.rdram = plugin_get_rdram();
+    config_al.gfx.rdram_size = plugin_get_rdram_size();
 
-    config.gfx.dmem = plugin_get_dmem();
-    config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
-    config.gfx.mi_intr_cb = gfx_info.CheckInterrupts;
+    config_al.gfx.dmem = plugin_get_dmem();
+    config_al.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
+    config_al.gfx.mi_intr_cb = gfx_info.CheckInterrupts;
 
-    config.gfx.vi_reg = plugin_get_vi_registers();
-    config.gfx.dp_reg = plugin_get_dp_registers();
+    config_al.gfx.vi_reg = plugin_get_vi_registers();
+    config_al.gfx.dp_reg = plugin_get_dp_registers();
 
 
 
-   n64video_init(&config);
+   n64video_init(&config_al);
    angrylion_init = true;
    return 1;
 }
