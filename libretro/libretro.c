@@ -95,8 +95,6 @@ float retro_screen_aspect = 4.0 / 3.0;
 
 uint32_t CountPerOp = 0;
 uint32_t CountPerScanlineOverride = 0;
-uint32_t *blitter_buf = NULL;
-uint32_t *blitter_buf_lock = NULL;
 uint32_t screen_width = 640;
 uint32_t screen_height = 480;
 uint32_t screen_pitch = 0;
@@ -792,7 +790,7 @@ void retro_run(void)
 			break;
 
 		default:
-			video_cb((screen_pitch == 0) ? NULL : blitter_buf_lock, screen_width, screen_height, screen_pitch);
+			video_cb((screen_pitch == 0) ? NULL : prescale, screen_width, screen_height, screen_pitch);
 			break;
 		}
 
