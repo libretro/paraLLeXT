@@ -401,7 +401,6 @@ void angrylionUpdateScreen(void)
     counter = 0;
 #endif
     n64video_update_screen();
-    retro_return(true);
 }
 
 void angrylionShowCFB (void)
