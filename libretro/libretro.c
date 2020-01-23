@@ -92,6 +92,7 @@ static unsigned retro_dithering     = 0;
 uint32_t retro_screen_width = 320;
 uint32_t retro_screen_height = 240;
 float retro_screen_aspect = 4.0 / 3.0;
+bool libretro_swap_buffer;
 
 uint32_t CountPerOp = 0;
 uint32_t CountPerScanlineOverride = 0;
@@ -106,6 +107,44 @@ int rspMode = 0;
 extern struct device g_dev;
 extern unsigned int emumode;
 extern struct cheat_ctx g_cheat_ctx;
+
+uint32_t bilinearMode = 0;
+uint32_t EnableHWLighting = 0;
+uint32_t CorrectTexrectCoords = 0;
+uint32_t enableNativeResTexrects = 0;
+uint32_t enableLegacyBlending = 0;
+uint32_t EnableCopyColorToRDRAM = 0;
+uint32_t EnableCopyDepthToRDRAM = 0;
+uint32_t AspectRatio = 0;
+uint32_t MaxTxCacheSize = 0;
+uint32_t txFilterMode = 0;
+uint32_t txEnhancementMode = 0;
+uint32_t txHiresEnable = 0;
+uint32_t txHiresFullAlphaChannel = 0;
+uint32_t txFilterIgnoreBG = 0;
+uint32_t EnableFXAA = 0;
+uint32_t MultiSampling = 0;
+uint32_t EnableFragmentDepthWrite = 0;
+uint32_t EnableShadersStorage = 0;
+uint32_t EnableTextureCache = 0;
+uint32_t EnableFBEmulation = 0;
+uint32_t EnableFrameDuping = 0;
+uint32_t EnableNoiseEmulation = 0;
+uint32_t EnableLODEmulation = 0;
+uint32_t EnableFullspeed = 0;
+uint32_t BackgroundMode = 0; // 0 is bgOnePiece
+uint32_t EnableEnhancedTextureStorage;
+uint32_t EnableEnhancedHighResStorage;
+uint32_t EnableTxCacheCompression = 0;
+uint32_t ForceDisableExtraMem = 0;
+uint32_t EnableNativeResFactor = 0;
+uint32_t EnableN64DepthCompare = 0;
+#define GLN64_OVERSCAN_SCALING "0|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|47|48|49|50"
+uint32_t EnableOverscan = 0;
+uint32_t OverscanTop = 0;
+uint32_t OverscanLeft = 0;
+uint32_t OverscanRight = 0;
+uint32_t OverscanBottom = 0;
 
 // after the controller's CONTROL* member has been assigned we can update
 // them straight from here...
