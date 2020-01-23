@@ -27,6 +27,10 @@ INCFLAGS += \
 	-I$(ROOT_DIR)/xxHash
 
 ifneq (,$(findstring win,$(platform)))
+	INCFLAGS += -I$(ROOT_DIR)/custom/mman-win32
+endif
+
+ifneq (,$(findstring win,$(platform)))
 	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_win32.c \
 		$(ROOT_DIR)/custom/mman-win32/mman.c
 else
