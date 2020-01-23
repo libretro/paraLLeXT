@@ -27,19 +27,15 @@ INCFLAGS += \
 	-I$(ROOT_DIR)/xxHash
 
 ifneq (,$(findstring win,$(platform)))
-	INCFLAGS += -I$(ROOT_DIR)/custom/mman-win32
-endif
-
-ifneq (,$(findstring win,$(platform)))
-	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_win32.c \
-		$(ROOT_DIR)/custom/mman-win32/mman.c
+	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_win32.c 
+	#$(ROOT_DIR)/custom/mman-win32/mman.c
 else
 	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_unix.c
 endif
 
 
 
-SOURCES_C = \
+SOURCES_C += \
 	$(CORE_DIR)/src/asm_defines/asm_defines.c \
 	$(CORE_DIR)/src/api/callbacks.c \
 	$(ROOT_DIR)/custom/mupen64plus-core/api/config.c \
@@ -118,13 +114,6 @@ COREFLAGS += -I$(CORE_DIR)/subprojects/minizip
 SOURCES_C += \
 	$(CORE_DIR)/subprojects/xxhash/xxhash.c
 COREFLAGS += -I$(CORE_DIR)/subprojects/xxhash
-
-ifneq (,$(findstring win,$(platform)))
-	SOURCES_C += $(ROOT_DIR)/custom/osal/osal_files_win32.c \
-		$(ROOT_DIR)/custom/mman-win32/mman.c
-else
-	SOURCES_C += $(ROOT_DIR)/custom/osal/osal_files_unix.c
-endif
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC
