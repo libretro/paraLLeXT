@@ -1,5 +1,5 @@
-#ifndef RSP_H
-#define RSP_H
+#ifndef RSP_H_
+#define RSP_H_
 
 #include "Types.h"
 #include "N64.h"
