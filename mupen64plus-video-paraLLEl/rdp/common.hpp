@@ -13,10 +13,10 @@
 
 /* This should probably depend on whether or not we have expansion slot installed, but AFAIK
  * mupen doesn't expose this information, so just always assume 8 MiB. */
-#define RDRAM_SIZE	0x800000
-#define RDRAM_MASK_8	(RDRAM_SIZE - 1)
-#define RDRAM_MASK_16	(RDRAM_SIZE - 2)
-#define RDRAM_MASK_32	(RDRAM_SIZE - 4)
+#define RDRAM_SIZE_VK	0x800000
+#define RDRAM_MASK_8	(RDRAM_SIZE_VK - 1)
+#define RDRAM_MASK_16	(RDRAM_SIZE_VK - 2)
+#define RDRAM_MASK_32	(RDRAM_SIZE_VK - 4)
 
 #define WRAP_ADDR(addr) 			((addr)&RDRAM_MASK_8)
 #define READ_DRAM_U32(base, addr) 		(*reinterpret_cast<const uint32_t *>(base + ((addr)&RDRAM_MASK_32)))
