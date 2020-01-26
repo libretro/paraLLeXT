@@ -391,7 +391,6 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
          gfx = gfx_parallel;
 #endif
          break;
-      
       default:
          gfx = gfx_angrylion;
          break;

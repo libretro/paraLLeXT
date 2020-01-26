@@ -202,8 +202,11 @@ poll_cb();
 /*********************************************************************************************************
 * global functions, for adjusting the core emulator behavior
 */
+extern void Config_LoadConfig();
 int main_set_core_defaults(void)
 {
+    if(gfx_plugin == GFX_GLIDEN64)
+    Config_LoadConfig();
     return 1;
 }
 

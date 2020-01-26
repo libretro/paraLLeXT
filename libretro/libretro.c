@@ -172,6 +172,12 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 
 extern m64p_rom_header ROM_HEADER;
 
+
+static void setup_vars_gliden64(void)
+{
+	
+}
+
 static void setup_variables(void)
 {
 	struct retro_variable variables[] = {
@@ -209,7 +215,6 @@ static void setup_variables(void)
 	   { "parallel-n64-angrylion-sync",
        "(Angrylion) Thread sync level; Low|Medium|High"
       },
-
 	{ "parallel-n64-screensize",
 	  "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },
 	{ "mupen64plus-Framerate",
@@ -303,7 +308,8 @@ static void emu_step_initialize(void)
 	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
 	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-	
+	if (gfx_var.value && !strcmp(gfx_var.value, "HLE (OpenGL, GLideN64)") && gl_inited)
+		gfx_plugin = GFX_GLIDEN64;
 	if (gfx_var.value && !strcmp(gfx_var.value, "LLE (software, angrylion)"))
 		gfx_plugin = GFX_ANGRYLION;
 #ifdef HAVE_PARALLEL
@@ -323,10 +329,10 @@ static void emu_step_initialize(void)
 
    if (rsp_var.value)
    {
-      if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
+      if (rsp_var.value && !strcmp(rsp_var.value, "cxd4 (interpreter)"))
          rsp_plugin = RSP_CXD4;
 	#if defined(HAVE_PARALLEL_RSP)
-      if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
+      if (rsp_var.value && !strcmp(rsp_var.value, "parallel (JIT)"))
          rsp_plugin = RSP_PARALLEL;
 	#endif
    }
@@ -817,7 +823,8 @@ static void context_destroy(void)
 {
 	if(gfx_plugin==GFX_GLIDEN64)
 	 glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
-	if (gfx_plugin==GFX_PARALLEL)
+
+
    deinit_gfx_plugin();
 }
 #endif
