@@ -5,12 +5,15 @@
 #include "libretro.h"
 #include "libretro_private.h"
 #include "libretro_externs.h"
+#include "GLideN64_libretro.h"
 
 #include <libco.h>
 
 #ifdef HAVE_LIBNX
 #include <switch.h>
 #endif
+
+#include <glsm/glsmsym.h>
 
 #include "api/m64p_frontend.h"
 #include "plugin/plugin.h"
@@ -84,6 +87,7 @@ static bool     emu_initialized = false;
 static unsigned initial_boot = true;
 static unsigned audio_buffer_size = 2048;
 static bool vulkan_inited = false;
+static bool gl_inited = false;
 static bool     first_context_reset = false;
 static bool     initializing = true;
 
@@ -299,10 +303,11 @@ static void emu_step_initialize(void)
 	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
 	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
 
-	if (gfx_var.value && !strcmp(gfx_var.value, "angrylion"))
+	
+	if (gfx_var.value && !strcmp(gfx_var.value, "LLE (software, angrylion)"))
 		gfx_plugin = GFX_ANGRYLION;
 #ifdef HAVE_PARALLEL
-	if (gfx_var.value && !strcmp(gfx_var.value, "parallel") && vulkan_inited)
+	if (gfx_var.value && !strcmp(gfx_var.value, "LLE (Vulkan, parallel)") && vulkan_inited)
 		gfx_plugin = GFX_PARALLEL;
 #endif
 
@@ -325,6 +330,9 @@ static void emu_step_initialize(void)
          rsp_plugin = RSP_PARALLEL;
 	#endif
    }
+
+   if(gfx_plugin==GFX_GLIDEN64)
+   rsp_plugin = RSP_HLE;
 
 
 	emu_initialized = true;
@@ -769,12 +777,27 @@ void deinit_gfx_plugin(void)
 }
 
 #if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+
 static void context_reset(void)
 {
+	static bool first_init = true;
+    log_cb(RETRO_LOG_DEBUG,  "context_reset()\n");
+  
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:
+	  break;
       case GFX_PARALLEL:
+	  break;
+	  case GFX_GLIDEN64:
+	glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+
+    if (first_init)
+    {
+        glsm_ctl(GLSM_CTL_STATE_SETUP, NULL);
+        first_init = false;
+    }
+
          break;
       default:
          break;
@@ -783,13 +806,38 @@ static void context_reset(void)
    reinit_gfx_plugin();
 }
 
+static bool context_framebuffer_lock(void *data)
+{
+    //if (!stop)
+     //   return false;
+    return true;
+}
+
 static void context_destroy(void)
 {
+	if(gfx_plugin==GFX_GLIDEN64)
+	 glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
+	if (gfx_plugin==GFX_PARALLEL)
    deinit_gfx_plugin();
 }
 #endif
 
-
+static bool retro_init_gl(void)
+{
+	 glsm_ctx_params_t params = {0};
+	params.context_reset         = context_reset;
+    params.context_destroy       = context_destroy;
+    params.environ_cb            = environ_cb;
+    params.stencil               = false;
+    params.framebuffer_lock      = context_framebuffer_lock;
+    if (!glsm_ctl(GLSM_CTL_STATE_CONTEXT_INIT, &params))
+    {
+        if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "libretro frontend doesn't have OpenGL support\n");
+        return false;
+    }
+	return true;
+}
 
 static bool retro_init_vulkan(void)
 {
@@ -830,15 +878,18 @@ bool retro_load_game(const struct retro_game_info *game)
 	update_variables();
 	initial_boot = false;
 
-	if (gfx_plugin != GFX_ANGRYLION)
+	if (gfx_plugin == GFX_PARALLEL)
 	{
 		if (retro_init_vulkan())
 			vulkan_inited = true;
 	}
 
-	if (vulkan_inited)
+	if(gfx_plugin == GFX_GLIDEN64)
 	{
-		gfx_plugin = GFX_PARALLEL;
+		if(retro_init_gl())
+		gl_inited = true;
+		vulkan_inited = false;
+
 	}
 
 
@@ -885,7 +936,19 @@ void retro_run(void)
 	static bool updated = false;
 	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
 		update_controllers();
-
+   
+    if(gfx_plugin == GFX_GLIDEN64)
+	{
+	glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
+    co_switch(game_thread);
+    glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
+    if (libretro_swap_buffer)
+        video_cb(RETRO_HW_FRAME_BUFFER_VALID, retro_screen_width, retro_screen_height, 0);
+    else if(EnableFrameDuping)
+        video_cb(NULL, retro_screen_width, retro_screen_height, 0);
+		
+	return;
+	}
 
 	co_switch(game_thread);
 	//if (libretro_swap_buffer)
