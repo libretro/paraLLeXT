@@ -715,6 +715,71 @@ static void format_saved_memory(void)
 	format_mempak(saved_memory.mempack + 3 * MEMPAK_SIZE);
 }
 
+void reinit_gfx_plugin(void)
+{
+    if(first_context_reset)
+    {
+        first_context_reset = false;
+#ifndef NO_LIBCO
+        co_switch(game_thread);
+#endif
+    }
+
+    switch (gfx_plugin)
+    {
+       case GFX_ANGRYLION:
+          /* Stub */
+          break;
+       case GFX_PARALLEL:
+#ifdef HAVE_PARALLEL
+          if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
+          {
+             if (log_cb)
+                log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
+          }
+          else
+             parallel_init(vulkan);
+#endif
+          break;
+    }
+}
+
+void deinit_gfx_plugin(void)
+{
+    switch (gfx_plugin)
+    {
+       case GFX_PARALLEL:
+#if defined(HAVE_PARALLEL)
+          parallel_deinit();
+#endif
+          break;
+       default:
+          break;
+    }
+}
+
+#if defined(HAVE_PARALLEL) || defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+static void context_reset(void)
+{
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION:
+      case GFX_PARALLEL:
+         break;
+      default:
+         break;
+   }
+
+   reinit_gfx_plugin();
+}
+
+static void context_destroy(void)
+{
+   deinit_gfx_plugin();
+}
+#endif
+
+
 
 static bool retro_init_vulkan(void)
 {
