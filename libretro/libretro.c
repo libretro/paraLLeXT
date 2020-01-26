@@ -182,15 +182,15 @@ static void setup_variables(void)
 	   "ParaLLEl Synchronous RDP; enabled|disabled" },
 #endif
 	{ "parallel-n64-gfxplugin",
-	   "GFX Plugin; angrylion"
+	   "Graphics accuracy; HLE (OpenGL, GLideN64)|LLE (software, angrylion)"
 #if defined(HAVE_PARALLEL)
-			"|parallel"
+			"|LLE (Vulkan, parallel)"
 #endif
 	},
 	{ "parallel-n64-rspplugin",
-	   "RSP Plugin; cxd4"
+	   "LLE RSP Plugin; cxd4 (interpreter)"
 #ifdef HAVE_PARALLEL_RSP
-		 "|parallel"
+		 "|parallel (JIT)"
 #endif
 	},
 	{ "parallel-n64-dithering",
@@ -203,7 +203,7 @@ static void setup_variables(void)
 	{ "parallel-n64-angrylion-overscan",
 	  "(Angrylion) Hide overscan; disabled|enabled" },
 	   { "parallel-n64-angrylion-sync",
-       "(Angrylion) Thread sync level; Medium|High|Low"
+       "(Angrylion) Thread sync level; Low|Medium|High"
       },
 
 	{ "parallel-n64-screensize",
@@ -315,8 +315,18 @@ static void emu_step_initialize(void)
 #endif
 	}
 
-	if (gfx_plugin == GFX_ANGRYLION)
-		rsp_plugin = RSP_CXD4;
+
+   if (rsp_var.value)
+   {
+      if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
+         rsp_plugin = RSP_CXD4;
+	#if defined(HAVE_PARALLEL_RSP)
+      if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
+         rsp_plugin = RSP_PARALLEL;
+	#endif
+   }
+
+
 	emu_initialized = true;
 	plugin_connect_all(gfx_plugin, rsp_plugin);
 }
@@ -358,7 +368,7 @@ void retro_get_system_info(struct retro_system_info *info)
 #ifndef GIT_VERSION
 #define GIT_VERSION " git"
 #endif
-	info->library_version = "0.1" GIT_VERSION;
+	info->library_version = "0.2" GIT_VERSION;
 	info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
 	info->need_fullpath = false;
 	info->block_extract = false;
@@ -659,7 +669,7 @@ void update_variables()
          angrylion_set_synclevel(0);
    }
    else
-      angrylion_set_synclevel(1);
+      angrylion_set_synclevel(0);
 
    var.key = "parallel-n64-angrylion-overscan";
    var.value = NULL;
