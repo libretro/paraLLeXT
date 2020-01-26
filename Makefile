@@ -335,7 +335,7 @@ else ifeq ($(platform), emscripten)
 else
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32
-   GL_LIB := -lopengl32
+   GL_LIB := -lopengl32 -lversion
    ifneq (,$(findstring win32,$(platform)))
       CC = i686-w64-mingw32-gcc
       CXX = i686-w64-mingw32-g++
