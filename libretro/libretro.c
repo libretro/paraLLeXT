@@ -1453,14 +1453,14 @@ void retro_run(void)
     glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
     if (libretro_swap_buffer)
         video_cb(RETRO_HW_FRAME_BUFFER_VALID, retro_screen_width, retro_screen_height, 0);
-    else if(EnableFrameDuping)
+    else
         video_cb(NULL, retro_screen_width, retro_screen_height, 0);
 		
 	return;
 	}
 
 	co_switch(game_thread);
-	//if (libretro_swap_buffer)
+	if (libretro_swap_buffer)
 	{
 		switch (gfx_plugin)
 		{
@@ -1481,6 +1481,8 @@ void retro_run(void)
 		}
 
 	}
+    else
+    video_cb(NULL, retro_screen_width, retro_screen_height, 0);
 }
 
 void retro_reset(void)

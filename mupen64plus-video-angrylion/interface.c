@@ -7,6 +7,8 @@
 #include <boolean.h>
 
 #include "m64p_plugin.h"
+#include "libretro_private.h"
+#include "libretro_externs.h"
 
 extern void DebugMessage(int level, const char *message, ...);
 
@@ -16,8 +18,6 @@ extern void DebugMessage(int level, const char *message, ...);
 #include "m64p_types.h"
 #include "m64p_config.h"
 #include "vdac.h"
-
-int retro_return(bool just_flipping);
 
 #define DP_INTERRUPT    0x20
 
@@ -142,7 +142,9 @@ void vdac_write(struct frame_buffer* fb)
    screen_pitch = fb->pitch * 4;
 }
 
-void vdac_sync(bool invalid) { }
+void vdac_sync(bool invalid) {
+     libretro_swap_buffer = !invalid;
+ }
 void vdac_close(void) { }
 
 void angrylion_set_vi(unsigned value)
@@ -361,7 +363,7 @@ void angrylionUpdateScreen(void)
     counter = 0;
 #endif
     n64video_update_screen();
-    retro_return(true);
+  
 }
 
 void angrylionShowCFB (void)
