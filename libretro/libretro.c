@@ -317,16 +317,6 @@ static void emu_step_initialize(void)
 		gfx_plugin = GFX_PARALLEL;
 #endif
 
-	if (vulkan_inited)
-	{
-#if defined(HAVE_PARALLEL_RSP)
-		rsp_plugin = RSP_PARALLEL;
-#else
-		rsp_plugin = RSP_CXD4;
-#endif
-	}
-
-
    if (rsp_var.value)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4 (interpreter)"))
@@ -337,8 +327,8 @@ static void emu_step_initialize(void)
 	#endif
    }
 
-   if(gfx_plugin==GFX_GLIDEN64)
-   rsp_plugin = RSP_HLE;
+   if(gl_inited && gfx_plugin == GFX_GLIDEN64)
+	rsp_plugin = RSP_HLE;
 
 
 	emu_initialized = true;
