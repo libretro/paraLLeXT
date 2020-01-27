@@ -773,35 +773,8 @@ extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 
 static void emu_step_initialize(void)
 {
-	if (emu_initialized)
-		return;
-
-	struct retro_variable gfx_var = { "parallel-n64-gfxplugin", 0 };
-	struct retro_variable rsp_var = { "parallel-n64-rspplugin", 0 };
-	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
-	environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
-
-	if (gfx_var.value && !strcmp(gfx_var.value, "HLE (OpenGL, GLideN64)") && gl_inited)
-		gfx_plugin = GFX_GLIDEN64;
-	if (gfx_var.value && !strcmp(gfx_var.value, "LLE (software, angrylion)"))
-		gfx_plugin = GFX_ANGRYLION;
-#ifdef HAVE_PARALLEL
-	if (gfx_var.value && !strcmp(gfx_var.value, "LLE (Vulkan, parallel)") && vulkan_inited)
-		gfx_plugin = GFX_PARALLEL;
-#endif
-
-   if (rsp_var.value)
-   {
-      if (rsp_var.value && !strcmp(rsp_var.value, "cxd4 (interpreter)"))
-         rsp_plugin = RSP_CXD4;
-	#if defined(HAVE_PARALLEL_RSP)
-      if (rsp_var.value && !strcmp(rsp_var.value, "parallel (JIT)"))
-         rsp_plugin = RSP_PARALLEL;
-	#endif
-   }
-
-   if(gl_inited && gfx_plugin == GFX_GLIDEN64)
-	rsp_plugin = RSP_HLE;
+    if (emu_initialized)
+        return;
 
 
 	emu_initialized = true;
@@ -1347,6 +1320,31 @@ bool retro_load_game(const struct retro_game_info *game)
 
 	update_variables();
 	initial_boot = false;
+
+
+    struct retro_variable gfx_var = { "parallel-n64-gfxplugin", 0 };
+    struct retro_variable rsp_var = { "parallel-n64-rspplugin", 0 };
+    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &gfx_var);
+    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+
+    if (gfx_var.value && !strcmp(gfx_var.value, "HLE (OpenGL, GLideN64)"))
+        gfx_plugin = GFX_GLIDEN64;
+    if (gfx_var.value && !strcmp(gfx_var.value, "LLE (software, angrylion)"))
+        gfx_plugin = GFX_ANGRYLION;
+#ifdef HAVE_PARALLEL
+    if (gfx_var.value && !strcmp(gfx_var.value, "LLE (Vulkan, parallel)") && vulkan_inited)
+        gfx_plugin = GFX_PARALLEL;
+#endif
+
+    if (rsp_var.value)
+    {
+        if (rsp_var.value && !strcmp(rsp_var.value, "cxd4 (interpreter)"))
+            rsp_plugin = RSP_CXD4;
+#if defined(HAVE_PARALLEL_RSP)
+        if (rsp_var.value && !strcmp(rsp_var.value, "parallel (JIT)"))
+            rsp_plugin = RSP_PARALLEL;
+#endif
+    }
 
 	if (gfx_plugin == GFX_PARALLEL)
 	{
