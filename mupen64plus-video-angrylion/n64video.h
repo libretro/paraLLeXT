@@ -81,11 +81,14 @@ struct n64video_config
         bool hide_overscan;         // crop to visible area if true
         bool vsync;                 // enable vsync if true
         bool exclusive;             // run in exclusive mode when in fullscreen if true
+        bool vi_dedither;           // enable dedithering if true
+        bool vi_blur;               // enable bilateral blur if true
     } vi;
     struct {
         enum dp_compat_profile compat;  // multithreading compatibility mode
     } dp;
     bool parallel;                  // use multithreaded renderer if true
+    bool dithering;                 // enable dithering
     uint32_t num_workers;           // number of rendering workers
 };
 

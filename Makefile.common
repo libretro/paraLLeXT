@@ -379,11 +379,9 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 	$(ROOT_DIR)/custom/mupen64plus-core/api/vidext_libretro.c \
 	$(LIBRETRO_COMM_DIR)/glsm/glsm.c
 
-SOURCES_CXX += \
-				  $(VIDEODIR_ANGRYLION)/interface.cpp \
-				  $(VIDEODIR_ANGRYLION)/parallel_al.cpp
+SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
 SOURCES_C +=  $(VIDEODIR_ANGRYLION)/n64video.c \
-				  $(VIDEODIR_ANGRYLION)/screen.c 
+				  $(VIDEODIR_ANGRYLION)/interface.c 
 
 SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
 
@@ -427,6 +425,11 @@ endif
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 ### Tiny Tiger's LLE RSP JIT ###
    PARALLEL_RSP_ARCH := x86_64
+
+ifeq ($(WANT_LLVM_OVERRIDE), 1)
+	INCFLAGS += -I/usr/lib/llvm-$(LLVM_VERSION)/include
+endif
+
    SOURCES_CXX += \
 				$(RSPDIR_PARALLEL)/parallel.cpp \
 				$(RSPDIR_PARALLEL)/rsp.cpp \
@@ -437,6 +440,7 @@ ifeq ($(HAVE_PARALLEL_RSP), 1)
 	CXXFLAGS += -DHAVE_PARALLEL_RSP -DPARALLEL_INTEGRATION
 ifeq ($(DEBUG_JIT), 1)
 	CXXFLAGS += -DDEBUG_JIT
+	LDFLAGS += -ldl -rdynamic
 	SOURCES_CXX += $(RSPDIR_PARALLEL)/debug_jit.cpp
 else
 	SOURCES_CXX += $(RSPDIR_PARALLEL)/jit.cpp
@@ -464,6 +468,10 @@ LDFLAGS += -lclangFrontendTool \
 	   -lclangAST \
 	   -lclangLex \
 	   -lclangBasic
-LDFLAGS += $(shell llvm-config --ldflags --libs --system-libs)
+ifeq ($(WANT_LLVM_OVERRIDE), 1)
+LDFLAGS += $(shell llvm-config-$(LLVM_VERSION) --ldflags --libs --link-static --system-libs)
+else
+LDFLAGS += $(shell llvm-config --ldflags --libs --link-static --system-libs)
+endif
 
 endif

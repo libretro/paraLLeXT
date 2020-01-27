@@ -558,9 +558,9 @@ static void setup_variables(void)
 	},
 	{ "parallel-n64-dithering",
 		 "Dithering; enabled|disabled" },
-	{ "parallel-n64-angrylion-vioverlay",
-	"(Angrylion) VI Overlay; Filtered|Unfiltered|Depth|Coverage"
-	},
+	 { "parallel-n64-angrylion-vioverlay",
+       "(Angrylion) VI Overlay; Filtered|AA+Blur|AA+Dedither|AA only|Unfiltered|Depth|Coverage"
+      },
 	{ "parallel-n64-angrylion-multithread",
 	  "(Angrylion) Multi-threading; enabled|disabled" },
 	{ "parallel-n64-angrylion-overscan",
@@ -972,6 +972,9 @@ extern void  angrylion_set_overscan(unsigned value);
 
 extern void angrylion_set_synclevel(unsigned value);
 
+extern void  angrylion_set_vi_dedither(unsigned value);
+extern void  angrylion_set_vi_blur(unsigned value);
+
 static void gfx_set_filtering(void)
 {
      if (log_cb)
@@ -1077,16 +1080,54 @@ void update_variables()
    if (var.value)
    {
       if(!strcmp(var.value, "Filtered"))
+      {
          angrylion_set_vi(0);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
+      else if(!strcmp(var.value, "AA+Blur"))
+      {
+         angrylion_set_vi(0);
+         angrylion_set_vi_dedither(0);
+         angrylion_set_vi_blur(1);
+      }
+      else if(!strcmp(var.value, "AA+Dedither"))
+      {
+         angrylion_set_vi(0);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(0);
+      }
+      else if(!strcmp(var.value, "AA only"))
+      {
+         angrylion_set_vi(0);
+         angrylion_set_vi_dedither(0);
+         angrylion_set_vi_blur(0);
+      }
       else if(!strcmp(var.value, "Unfiltered"))
+      {
          angrylion_set_vi(1);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
       else if(!strcmp(var.value, "Depth"))
+      {
          angrylion_set_vi(2);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
       else if(!strcmp(var.value, "Coverage"))
+      {
          angrylion_set_vi(3);
+         angrylion_set_vi_dedither(1);
+         angrylion_set_vi_blur(1);
+      }
    }
    else
+   {
       angrylion_set_vi(0);
+      angrylion_set_vi_dedither(1);
+      angrylion_set_vi_blur(1);
+   }
 
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
