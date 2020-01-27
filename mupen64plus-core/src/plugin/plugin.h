@@ -29,9 +29,9 @@
 
 enum gfx_plugin_type
 {
-   GFX_ANGRYLION = 0,
+   GFX_GLIDEN64 = 0,
    GFX_PARALLEL = 1,
-   GFX_GLIDEN64
+   GFX_ANGRYLION
 };
 
 enum rsp_plugin_type
