@@ -58,6 +58,10 @@ static const struct retro_hw_render_interface_vulkan *vulkan;
 
 #define PATH_SIZE 2048
 
+#ifndef CORE_NAME
+#define CORE_NAME "mupen64plus"
+#endif
+
 #define ISHEXDEC ((codeLine[cursor]>='0') && (codeLine[cursor]<='9')) || ((codeLine[cursor]>='a') && (codeLine[cursor]<='f')) || ((codeLine[cursor]>='A') && (codeLine[cursor]<='F'))
 
 struct retro_perf_callback perf_cb;
@@ -173,9 +177,358 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 extern m64p_rom_header ROM_HEADER;
 
 
-static void setup_vars_gliden64(void)
+void update_vars_gliden64(void)
 {
-	
+    struct retro_variable var;
+
+    var.key = CORE_NAME "-BilinearMode";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        bilinearMode = !strcmp(var.value, "3point") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-FXAA";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableFXAA = atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-MultiSampling";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        MultiSampling = atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-FrameDuping";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableFrameDuping = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-Framerate";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableFullspeed = !strcmp(var.value, "Original") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-virefresh";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        CountPerScanlineOverride = !strcmp(var.value, "Auto") ? 0 : atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-NoiseEmulation";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableNoiseEmulation = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableLODEmulation";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableLODEmulation = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableFBEmulation";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableFBEmulation = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableN64DepthCompare";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableN64DepthCompare = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableCopyColorToRDRAM";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "Async"))
+            EnableCopyColorToRDRAM = 2;
+        else if (!strcmp(var.value, "Sync"))
+            EnableCopyColorToRDRAM = 1;
+        else
+            EnableCopyColorToRDRAM = 0;
+    }
+
+    var.key = CORE_NAME "-EnableCopyDepthToRDRAM";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "Software"))
+            EnableCopyDepthToRDRAM = 2;
+        else if (!strcmp(var.value, "FromMem"))
+            EnableCopyDepthToRDRAM = 1;
+        else
+            EnableCopyDepthToRDRAM = 0;
+    }
+
+    var.key = CORE_NAME "-EnableHWLighting";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableHWLighting = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-CorrectTexrectCoords";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "Force"))
+            CorrectTexrectCoords = 2;
+        else if (!strcmp(var.value, "Auto"))
+            CorrectTexrectCoords = 1;
+        else
+            CorrectTexrectCoords = 0;
+    }
+
+    var.key = CORE_NAME "-BackgroundMode";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        BackgroundMode = !strcmp(var.value, "OnePiece") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableNativeResTexrects";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if(!strcmp(var.value, "False") || !strcmp(var.value, "Disabled"))
+        {
+            enableNativeResTexrects = 0; // NativeResTexrectsMode::ntDisable
+        }
+        else if(!strcmp(var.value, "Optimized"))
+        {
+            enableNativeResTexrects = 1; // NativeResTexrectsMode::ntOptimized
+        }
+        else if(!strcmp(var.value, "Unoptimized"))
+        {
+            enableNativeResTexrects = 2; // NativeResTexrectsMode::ntUnptimized (Note: upstream typo)
+        }
+    }
+
+    var.key = CORE_NAME "-txFilterMode";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "Smooth filtering 1"))
+            txFilterMode = 1;
+        else if (!strcmp(var.value, "Smooth filtering 2"))
+            txFilterMode = 2;
+        else if (!strcmp(var.value, "Smooth filtering 3"))
+            txFilterMode = 3;
+        else if (!strcmp(var.value, "Smooth filtering 4"))
+            txFilterMode = 4;
+        else if (!strcmp(var.value, "Sharp filtering 1"))
+            txFilterMode = 5;
+        else if (!strcmp(var.value, "Sharp filtering 2"))
+            txFilterMode = 6;
+        else
+            txFilterMode = 0;
+    }
+
+    var.key = CORE_NAME "-txEnhancementMode";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "As Is"))
+            txEnhancementMode = 1;
+        else if (!strcmp(var.value, "X2"))
+            txEnhancementMode = 2;
+        else if (!strcmp(var.value, "X2SAI"))
+            txEnhancementMode = 3;
+        else if (!strcmp(var.value, "HQ2X"))
+            txEnhancementMode = 4;
+        else if (!strcmp(var.value, "HQ2XS"))
+            txEnhancementMode = 5;
+        else if (!strcmp(var.value, "LQ2X"))
+            txEnhancementMode = 6;
+        else if (!strcmp(var.value, "LQ2XS"))
+            txEnhancementMode = 7;
+        else if (!strcmp(var.value, "HQ4X"))
+            txEnhancementMode = 8;
+        else if (!strcmp(var.value, "2xBRZ"))
+            txEnhancementMode = 9;
+        else if (!strcmp(var.value, "3xBRZ"))
+            txEnhancementMode = 10;
+        else if (!strcmp(var.value, "4xBRZ"))
+            txEnhancementMode = 11;
+        else if (!strcmp(var.value, "5xBRZ"))
+            txEnhancementMode = 12;
+        else if (!strcmp(var.value, "6xBRZ"))
+            txEnhancementMode = 13;
+        else
+            txEnhancementMode = 0;
+    }
+
+    var.key = CORE_NAME "-txFilterIgnoreBG";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        // "Filter background textures; True|False" (true=filter, false=ignore)
+        txFilterIgnoreBG = !strcmp(var.value, "False") ? 1 : 0;
+    }
+
+    var.key = CORE_NAME "-txHiresEnable";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        txHiresEnable = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-txCacheCompression";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableTxCacheCompression = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-txHiresFullAlphaChannel";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        txHiresFullAlphaChannel = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-MaxTxCacheSize";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        MaxTxCacheSize = atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-EnableLegacyBlending";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        enableLegacyBlending = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableFragmentDepthWrite";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableFragmentDepthWrite = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableShadersStorage";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableShadersStorage = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableTextureCache";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableTextureCache = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableEnhancedTextureStorage";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableEnhancedTextureStorage = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-EnableEnhancedHighResStorage";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableEnhancedHighResStorage = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
+    var.key = CORE_NAME "-cpucore";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "pure_interpreter"))
+             emumode = EMUMODE_PURE_INTERPRETER;
+        else if (!strcmp(var.value, "cached_interpreter"))
+             emumode = EMUMODE_INTERPRETER;
+        else if (!strcmp(var.value, "dynamic_recompiler"))
+             emumode = EMUMODE_DYNAREC;
+    }
+
+    var.key = CORE_NAME "-aspect";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        if (!strcmp(var.value, "16:9 adjusted")) {
+             AspectRatio = 3;
+             retro_screen_aspect = 16.0 / 9.0;
+        } else if (!strcmp(var.value, "16:9")) {
+             AspectRatio = 2;
+             retro_screen_aspect = 16.0 / 9.0;
+        } else {
+             AspectRatio = 1;
+             retro_screen_aspect = 4.0 / 3.0;
+        }
+    }
+
+    var.key = (AspectRatio == 1 ? "parallel-n64-screensize" : CORE_NAME "-169screensize");
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        sscanf(var.value, "%dx%d", &retro_screen_width, &retro_screen_height);
+
+        // Sanity check... not optimal since we will render at a higher res, but otherwise
+        // GLideN64 might blit a bigger image onto a smaller framebuffer
+        // This is a recent regression.
+        if((retro_screen_width == 320 && retro_screen_height == 240) ||
+           (retro_screen_width == 640 && retro_screen_height == 360))
+        {
+            EnableNativeResFactor = 1; // Force factor == 1
+        }
+    }
+
+	 var.key = CORE_NAME "-EnableOverscan";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        EnableOverscan = !strcmp(var.value, "Enabled") ? 1 : 0;
+    }
+
+    var.key = CORE_NAME "-OverscanTop";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        OverscanTop = atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-OverscanLeft";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        OverscanLeft = atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-OverscanRight";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        OverscanRight = atoi(var.value);
+    }
+
+    var.key = CORE_NAME "-OverscanBottom";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        OverscanBottom = atoi(var.value);
+    }
 }
 
 static void setup_variables(void)
@@ -216,7 +569,127 @@ static void setup_variables(void)
        "(Angrylion) Thread sync level; Low|Medium|High"
       },
 	{ "parallel-n64-screensize",
-	  "Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },
+	  "4:3 Resolution (restart); 640x480|960x720|1280x960|1440x1080|1600x1200|1920x1440|2240x1680|2880x2160|5760x4320|320x240" },
+
+
+        { CORE_NAME "-169screensize",
+            "16:9 Resolution; 640x360|960x540|1280x720|1920x1080|2560x1440|3840x2160|4096x2160|7680x4320" },
+        { CORE_NAME "-aspect",
+            "Aspect Ratio; 4:3|16:9|16:9 adjusted" },
+        { CORE_NAME "-BilinearMode",
+            "Bilinear filtering mode; standard|3point" },
+#ifndef HAVE_OPENGLES2
+        { CORE_NAME "-MultiSampling",
+            "MSAA level; 0|2|4|8|16" },
+#endif
+        { CORE_NAME "-FXAA",
+            "FXAA; 0|1" },
+        { CORE_NAME "-FrameDuping",
+#ifdef HAVE_LIBNX
+            "Frame Duplication; True|False" },
+#else
+            "Frame Duplication; False|True" },
+#endif
+        { CORE_NAME "-Framerate",
+            "Framerate; Original|Fullspeed" },
+        { CORE_NAME "-virefresh",
+            "VI Refresh (Overclock); Auto|1500|2200" },
+        { CORE_NAME "-NoiseEmulation",
+            "Noise Emulation; True|False" },
+
+        { CORE_NAME "-EnableFBEmulation",
+#ifdef VC
+            "Framebuffer Emulation; False|True" },
+#else
+            "Framebuffer Emulation; True|False" },
+#endif
+
+        { CORE_NAME "-EnableLODEmulation",
+            "LOD Emulation; True|False" },
+        { CORE_NAME "-EnableCopyColorToRDRAM",
+#ifndef HAVE_OPENGLES
+            "Color buffer to RDRAM; Async|Sync|Off" },
+#else
+            "Color buffer to RDRAM; Off|Async|Sync" },
+#endif
+        { CORE_NAME "-EnableCopyDepthToRDRAM",
+            "Depth buffer to RDRAM; Software|FromMem|Off" },
+        { CORE_NAME "-BackgroundMode",
+            "Background Mode; OnePiece|Stripped" },
+        { CORE_NAME "-EnableHWLighting",
+            "Hardware per-pixel lighting; False|True" },
+        { CORE_NAME "-CorrectTexrectCoords",
+            "Continuous texrect coords; Off|Auto|Force" },
+        { CORE_NAME "-EnableNativeResTexrects",
+            "Native res. 2D texrects; Disabled|Optimized|Unoptimized" },
+#if defined(HAVE_OPENGLES)
+        { CORE_NAME "-EnableLegacyBlending",
+            "Less accurate blending mode; True|False" },
+        { CORE_NAME "-EnableFragmentDepthWrite",
+            "GPU shader depth write; False|True" },
+#else
+        { CORE_NAME "-EnableLegacyBlending",
+            "Less accurate blending mode; False|True" },
+        { CORE_NAME "-EnableFragmentDepthWrite",
+            "GPU shader depth write; True|False" },
+#endif
+#if !defined(VC) && !defined(HAVE_OPENGLES)
+        // Not supported on all GPU's
+        { CORE_NAME "-EnableN64DepthCompare",
+            "N64 Depth Compare; False|True" },
+        { CORE_NAME "-EnableShadersStorage",
+            "Cache GPU Shaders; True|False" },
+#endif // !defined(VC) && !defined(HAVE_OPENGLES)
+        { CORE_NAME "-EnableTextureCache",
+            "Cache Textures; True|False" },
+        { CORE_NAME "-EnableOverscan",
+            "Overscan; Enabled|Disabled" },
+        { CORE_NAME "-OverscanTop",
+            "Overscan Offset (Top); " GLN64_OVERSCAN_SCALING },
+        { CORE_NAME "-OverscanLeft",
+            "Overscan Offset (Left); " GLN64_OVERSCAN_SCALING },
+        { CORE_NAME "-OverscanRight",
+            "Overscan Offset (Right); " GLN64_OVERSCAN_SCALING },
+        { CORE_NAME "-OverscanBottom",
+            "Overscan Offset (Bottom); " GLN64_OVERSCAN_SCALING },
+
+        { CORE_NAME "-MaxTxCacheSize",
+#if defined(VC)
+            "Max texture cache size; 1500|8000|4000" },
+#elif defined(HAVE_LIBNX)
+            "Max texture cache size; 4000|1500|8000" },
+#else
+            "Max texture cache size; 8000|4000|1500" },
+#endif
+        { CORE_NAME "-txFilterMode",
+            "Texture filter; None|Smooth filtering 1|Smooth filtering 2|Smooth filtering 3|Smooth filtering 4|Sharp filtering 1|Sharp filtering 2" },
+        { CORE_NAME "-txEnhancementMode",
+            "Texture Enhancement; None|As Is|X2|X2SAI|HQ2X|HQ2XS|LQ2X|LQ2XS|HQ4X|2xBRZ|3xBRZ|4xBRZ|5xBRZ|6xBRZ" },
+        { CORE_NAME "-txFilterIgnoreBG",
+            "Filter background textures; True|False" },
+        { CORE_NAME "-txHiresEnable",
+            "Use High-Res textures; False|True" },
+        { CORE_NAME "-txCacheCompression",
+            "Use High-Res Texture Cache Compression; True|False" },
+        { CORE_NAME "-txHiresFullAlphaChannel",
+            "Use High-Res Full Alpha Channel; False|True" },
+        { CORE_NAME "-EnableEnhancedTextureStorage",
+            "Use enhanced Texture Storage; False|True" },
+        { CORE_NAME "-EnableEnhancedHighResStorage",
+            "Use enhanced Hi-Res Storage; False|True" },
+
+
+
+
+
+
+
+
+
+
+
+
+
 	{ "mupen64plus-Framerate",
 		"Framerate; Original|Fullspeed" },
 	{ "mupen64plus-virefresh",
@@ -712,7 +1185,7 @@ void update_variables()
       gfx_set_dithering();
    }
 
-
+    update_vars_gliden64();
 
 
 	update_controllers();
