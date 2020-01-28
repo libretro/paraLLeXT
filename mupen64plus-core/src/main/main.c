@@ -207,6 +207,7 @@ int main_set_core_defaults(void)
 {
     if(gfx_plugin == GFX_GLIDEN64)
     Config_LoadConfig();
+
     return 1;
 }
 

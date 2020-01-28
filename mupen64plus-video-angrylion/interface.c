@@ -30,6 +30,7 @@ extern GFX_INFO gfx_info;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
+#define config _config;
 struct n64video_config config;
 
 void plugin_init(void)

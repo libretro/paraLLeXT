@@ -97,8 +97,6 @@ static bool     initializing = true;
 
 static unsigned retro_filtering     = 0;
 static unsigned retro_dithering     = 0;
-uint32_t retro_screen_width = 320;
-uint32_t retro_screen_height = 240;
 float retro_screen_aspect = 4.0 / 3.0;
 bool libretro_swap_buffer;
 
@@ -483,13 +481,13 @@ void update_vars_gliden64(void)
     var.value = NULL;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
     {
-        sscanf(var.value, "%dx%d", &retro_screen_width, &retro_screen_height);
+        sscanf(var.value, "%dx%d", &screen_width, &screen_height);
 
         // Sanity check... not optimal since we will render at a higher res, but otherwise
         // GLideN64 might blit a bigger image onto a smaller framebuffer
         // This is a recent regression.
-        if((retro_screen_width == 320 && retro_screen_height == 240) ||
-           (retro_screen_width == 640 && retro_screen_height == 360))
+        if((screen_width == 320 && screen_height == 240) ||
+           (screen_width == 640 && screen_height == 360))
         {
             EnableNativeResFactor = 1; // Force factor == 1
         }
@@ -1221,9 +1219,6 @@ void reinit_gfx_plugin(void)
     if(first_context_reset)
     {
         first_context_reset = false;
-#ifndef NO_LIBCO
-        co_switch(game_thread);
-#endif
     }
 
     switch (gfx_plugin)
@@ -1243,6 +1238,7 @@ void reinit_gfx_plugin(void)
 #endif
           break;
     }
+     emu_step_initialize();
 }
 
 void deinit_gfx_plugin(void)
@@ -1291,14 +1287,12 @@ static void context_reset(void)
 
 static bool context_framebuffer_lock(void *data)
 {
-    //if (!stop)
-     //   return false;
     return true;
 }
 
 static void context_destroy(void)
 {
-	if(gfx_plugin==GFX_GLIDEN64)
+	if(gfx_plugin == GFX_GLIDEN64)
 	 glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
 
 
@@ -1452,9 +1446,9 @@ void retro_run(void)
     co_switch(game_thread);
     glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL);
     if (libretro_swap_buffer)
-        video_cb(RETRO_HW_FRAME_BUFFER_VALID, retro_screen_width, retro_screen_height, 0);
+        video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
     else
-        video_cb(NULL, retro_screen_width, retro_screen_height, 0);
+        video_cb(NULL, screen_width, screen_height, 0);
 		
 	return;
 	}
@@ -1482,7 +1476,7 @@ void retro_run(void)
 
 	}
     else
-    video_cb(NULL, retro_screen_width, retro_screen_height, 0);
+    video_cb(NULL, screen_width, screen_height, 0);
 }
 
 void retro_reset(void)
@@ -1623,9 +1617,7 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
 
 void retro_return(void)
 {
-	libretro_swap_buffer = true;
 	co_switch(retro_thread);
-
 }
 
 uint32_t get_retro_screen_width()
