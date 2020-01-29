@@ -30,8 +30,7 @@ extern GFX_INFO gfx_info;
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
 
-#define config al_config;
-struct n64video_config config;
+struct n64video_config al_config;
 
 void plugin_init(void)
 {
@@ -151,13 +150,13 @@ void vdac_close(void) { }
 void angrylion_set_vi(unsigned value)
 {
  
-   if(config.vi.mode != (enum vi_mode)value)
+   if(al_config.vi.mode != (enum vi_mode)value)
    {
-      config.vi.mode = (enum vi_mode)value;
+      al_config.vi.mode = (enum vi_mode)value;
       if (angrylion_init)
       {
           n64video_close();
-          n64video_init(&config);
+          n64video_init(&al_config);
       }
    }
 }
@@ -165,13 +164,13 @@ void angrylion_set_vi(unsigned value)
 void angrylion_set_threads(unsigned value)
 {
   
-    if(config.num_workers != value)
+    if(al_config.num_workers != value)
     {
-     config.num_workers = value;
+     al_config.num_workers = value;
      if (angrylion_init)
      {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&al_config);
      }
     }
     
@@ -179,13 +178,13 @@ void angrylion_set_threads(unsigned value)
 
 void angrylion_set_overscan(unsigned value)
 {
-   if(config.vi.hide_overscan != (bool)value)
+   if(al_config.vi.hide_overscan != (bool)value)
    {
-      config.vi.hide_overscan = (bool)value;
+      al_config.vi.hide_overscan = (bool)value;
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&al_config);
       }
    }
     
@@ -193,13 +192,13 @@ void angrylion_set_overscan(unsigned value)
 
 void angrylion_set_vi_dedither(unsigned value)
 {
-   if(config.vi.vi_dedither != (bool)value)
+   if(al_config.vi.vi_dedither != (bool)value)
    {
-      config.vi.vi_dedither = (bool)value;
+      al_config.vi.vi_dedither = (bool)value;
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&al_config);
       }
    }
     
@@ -207,13 +206,13 @@ void angrylion_set_vi_dedither(unsigned value)
 
 void angrylion_set_vi_blur(unsigned value)
 {
-   if(config.vi.vi_blur != (bool)value)
+   if(al_config.vi.vi_blur != (bool)value)
    {
-      config.vi.vi_blur = (bool)value;
+      al_config.vi.vi_blur = (bool)value;
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&al_config);
       }
    }
     
@@ -221,31 +220,31 @@ void angrylion_set_vi_blur(unsigned value)
 
 void angrylion_set_synclevel(unsigned value)
 {
-   if(config.dp.compat != (enum dp_compat_profile)value)
+   if(al_config.dp.compat != (enum dp_compat_profile)value)
    {
-      config.dp.compat= (enum dp_compat_profile)value;
+      al_config.dp.compat= (enum dp_compat_profile)value;
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&al_config);
       }
    }
 }
 
 unsigned angrylion_get_synclevel()
 {
-    return config.dp.compat;
+    return al_config.dp.compat;
 }
 
 unsigned angrylion_get_threads(void)
 {
-   return  config.num_workers;
+   return  al_config.num_workers;
 }
 
 
 unsigned angrylion_get_vi(void)
 {
-   return config.vi.mode;
+   return al_config.vi.mode;
 }
 
 void angrylion_set_filtering(unsigned filter_type)
@@ -255,25 +254,25 @@ void angrylion_set_filtering(unsigned filter_type)
    else
       filter_type=0;
 
-   if(config.vi.interp != (enum vi_interp)filter_type)
+   if(al_config.vi.interp != (enum vi_interp)filter_type)
    {
-      config.vi.interp = (enum vi_interp)filter_type;
+      al_config.vi.interp = (enum vi_interp)filter_type;
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&al_config);
       }
    }
 }
 
 unsigned angrylion_get_filtering(void)
 {
-    return  (unsigned)config.vi.interp;
+    return  (unsigned)al_config.vi.interp;
 }
 
 void angrylion_set_dithering(unsigned dither_type)
 {
-   config.dithering    = dither_type;
+   al_config.dithering    = dither_type;
 }
 
 void angrylionChangeWindow (void) { }
@@ -297,7 +296,7 @@ void angrylionSetRenderingCallback(void (*callback)(int)) { }
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
-   n64video_config_init(&config);
+   n64video_config_init(&al_config);
    return 0;
 }
  
@@ -340,17 +339,17 @@ int angrylionRomOpen(void)
 
    screen_pitch  = 640 << 2;
 
-  config.gfx.rdram       = plugin_get_rdram();
-  config.gfx.rdram_size  = plugin_get_rdram_size();
+  al_config.gfx.rdram       = plugin_get_rdram();
+  al_config.gfx.rdram_size  = plugin_get_rdram_size();
 
-  config.gfx.dmem        = plugin_get_dmem();
-  config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
-  config.gfx.mi_intr_cb  = gfx_info.CheckInterrupts;
+  al_config.gfx.dmem        = plugin_get_dmem();
+  al_config.gfx.mi_intr_reg = (uint32_t*)gfx_info.MI_INTR_REG;
+  al_config.gfx.mi_intr_cb  = gfx_info.CheckInterrupts;
 
-  config.gfx.vi_reg      = plugin_get_vi_registers();
-  config.gfx.dp_reg      = plugin_get_dp_registers();
+  al_config.gfx.vi_reg      = plugin_get_vi_registers();
+  al_config.gfx.dp_reg      = plugin_get_dp_registers();
 
-   n64video_init(&config);
+   n64video_init(&al_config);
    angrylion_init        = true;
    return 1;
 }
