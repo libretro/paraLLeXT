@@ -272,7 +272,15 @@ unsigned angrylion_get_filtering(void)
 
 void angrylion_set_dithering(unsigned dither_type)
 {
-   al_config.dithering    = dither_type;
+    if( al_config.dithering != (enum dp_compat_profile)dither_type)
+   {
+      al_config.dithering= (enum dp_compat_profile)dither_type;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&al_config);
+      }
+   }
 }
 
 void angrylionChangeWindow (void) { }
