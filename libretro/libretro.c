@@ -675,19 +675,6 @@ static void setup_variables(void)
             "Use enhanced Texture Storage; False|True" },
         { CORE_NAME "-EnableEnhancedHighResStorage",
             "Use enhanced Hi-Res Storage; False|True" },
-
-
-
-
-
-
-
-
-
-
-
-
-
 	{ "mupen64plus-Framerate",
 		"Framerate; Original|Fullspeed" },
 	{ "mupen64plus-virefresh",
@@ -1175,7 +1162,7 @@ void update_variables()
    else
       angrylion_set_overscan(0);
 
-	   var.key = "parallel-n64-dithering";
+   var.key = "parallel-n64-dithering";
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
@@ -1438,7 +1425,7 @@ void retro_run(void)
 	libretro_swap_buffer = false;
 	static bool updated = false;
 	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-		update_controllers();
+		update_variables();
    
     if(gfx_plugin == GFX_GLIDEN64)
 	{

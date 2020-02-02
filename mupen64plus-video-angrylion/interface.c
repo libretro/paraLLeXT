@@ -21,7 +21,7 @@ extern void DebugMessage(int level, const char *message, ...);
 
 #define DP_INTERRUPT    0x20
 
-static bool angrylion_init = false;
+bool angrylion_init = false;
 
 int ProcessDListShown = 0;
 
@@ -272,15 +272,7 @@ unsigned angrylion_get_filtering(void)
 
 void angrylion_set_dithering(unsigned dither_type)
 {
-    if( al_config.dithering != (enum dp_compat_profile)dither_type)
-   {
-      al_config.dithering= (enum dp_compat_profile)dither_type;
-      if (angrylion_init)
-      {
-         n64video_close();
-         n64video_init(&al_config);
-      }
-   }
+   al_config.dithering    = dither_type;
 }
 
 void angrylionChangeWindow (void) { }
