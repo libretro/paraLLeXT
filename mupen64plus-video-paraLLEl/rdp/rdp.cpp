@@ -642,7 +642,7 @@ void Renderer::fill_rect_cpu(int xmin, int xmax, int ymin, int ymax)
 
    uint32_t max_addr = addr + (ymax + ymin - 1) * stride + 4 * xmax;
 
-   if (max_addr <= RDRAM_SIZE) /* No wrapping case. */
+   if (max_addr <= RDRAM_SIZE_VK) /* No wrapping case. */
    {
       for (y = ymin; y <= ymax; y++, addr += stride)
          for (x = xmin; x <= xmax; x++)
@@ -1364,7 +1364,7 @@ void Renderer::sync_color_dram_to_gpu()
       {
 	      uint32_t max_addr = framebuffer.addr + 4 * pixels;
 	      assert((framebuffer.addr & 3) == 0);
-	      if (max_addr <= RDRAM_SIZE)
+	      if (max_addr <= RDRAM_SIZE_VK)
 		      memcpy(dst, base + framebuffer.addr, pixels * sizeof(uint32_t));
 	      else
 	      {
@@ -1376,7 +1376,7 @@ void Renderer::sync_color_dram_to_gpu()
       {
 	      uint32_t max_addr = framebuffer.addr + 2 * pixels;
 	      assert((framebuffer.addr & 1) == 0);
-	      if (max_addr <= RDRAM_SIZE)
+	      if (max_addr <= RDRAM_SIZE_VK)
 	      {
 		      for (unsigned i = 0; i < pixels; i++)
 		      {
@@ -1398,7 +1398,7 @@ void Renderer::sync_color_dram_to_gpu()
       else if (framebuffer.pixel_size == PIXEL_SIZE_8BPP)
       {
 	      uint32_t max_addr = framebuffer.addr + 1 * pixels;
-	      if (max_addr <= RDRAM_SIZE)
+	      if (max_addr <= RDRAM_SIZE_VK)
 	      {
 		      for (unsigned i = 0; i < pixels; i++)
 		      {
@@ -1546,7 +1546,7 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 		if (framebuffer.pixel_size == PIXEL_SIZE_32BPP)
 		{
 			uint32_t max_addr = framebuffer.addr + 4 * pixels;
-			if (max_addr <= RDRAM_SIZE)
+			if (max_addr <= RDRAM_SIZE_VK)
 			{
 				memcpy(base + framebuffer.addr, src, pixels * sizeof(uint32_t));
 			}
@@ -1561,7 +1561,7 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 			uint32_t max_addr = framebuffer.addr + 2 * pixels;
 			assert((framebuffer.addr & 1) == 0);
 
-			if (max_addr <= RDRAM_SIZE)
+			if (max_addr <= RDRAM_SIZE_VK)
 			{
 				for (unsigned i = 0; i < pixels; i++)
 					WRITE_DRAM_U16_NOWRAP(base, framebuffer.addr + 2 * i, src[i] >> 2);
@@ -1576,7 +1576,7 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 		{
 			uint32_t max_addr = framebuffer.addr + 1 * pixels;
 
-			if (max_addr <= RDRAM_SIZE)
+			if (max_addr <= RDRAM_SIZE_VK)
 			{
 				for (unsigned i = 0; i < pixels; i++)
 					WRITE_DRAM_U8_NOWRAP(base, framebuffer.addr + 1 * i, src[i] >> 3);
@@ -1597,7 +1597,7 @@ void Renderer::sync_framebuffer_to_cpu(AsyncFramebuffer &async)
 		uint32_t max_addr = framebuffer.depth_addr + 2 * pixels;
 		assert((framebuffer.depth_addr & 1) == 0);
 
-		if (max_addr <= RDRAM_SIZE)
+		if (max_addr <= RDRAM_SIZE_VK)
 		{
 			for (unsigned i = 0; i < pixels; i++)
 				WRITE_DRAM_U16_NOWRAP(base, framebuffer.depth_addr + 2 * i, src[i] >> 2);

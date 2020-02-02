@@ -35,8 +35,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libco.h>
-
 #define M64P_CORE_PROTOTYPES 1
 #include "api/callbacks.h"
 #include "api/config.h"
@@ -76,6 +74,7 @@
 #include "util.h"
 
 #include <libretro_private.h>
+#include <libco.h>
 
 #ifdef HAVE_LIBNX
 #include <sys/stat.h>
@@ -203,10 +202,12 @@ poll_cb();
 /*********************************************************************************************************
 * global functions, for adjusting the core emulator behavior
 */
-//extern void Config_LoadConfig();
+extern void Config_LoadConfig();
 int main_set_core_defaults(void)
 {
-   // Config_LoadConfig();
+    if(gfx_plugin == GFX_GLIDEN64)
+    Config_LoadConfig();
+
     return 1;
 }
 
@@ -806,7 +807,7 @@ static void load_dd_disk(struct file_storage* dd_disk, const struct storage_back
         } break;
 
     default:
-        DebugMessage(M64MSG_ERROR, "Invalid DD Disk size %u.", dd_disk->size);
+        DebugMessage(M64MSG_ERROR, "Invalid DD Disk size %u.", (uint32_t) dd_disk->size);
         close_file_storage(dd_disk);
         goto no_disk;
     }
@@ -973,10 +974,11 @@ extern audio_plugin_functions dummy_audio;
 
 unsigned int emumode;
 
+uint32_t rdram_size;
+
 m64p_error main_run(void)
 {
     size_t i, k;
-    size_t rdram_size;
     unsigned int count_per_op;
     unsigned int disable_extra_mem;
     int si_dma_duration;
@@ -1000,10 +1002,6 @@ m64p_error main_run(void)
 
     /* XXX: select type of flashram from db */
     uint32_t flashram_type = MX29L1100_ID;
-
-#ifdef NEW_DYNAREC
-    stop_after_jal = 0;
-#endif
 
     count_per_op = CountPerOp;
     disable_extra_mem = ROM_PARAMS.disableextramem;
@@ -1205,10 +1203,10 @@ m64p_error main_run(void)
 
             if (l_ipaks[l_paks_idx[i]] != NULL) {
                 DebugMessage(M64MSG_INFO, "Game controller %u (%s) has a %s plugged in",
-                    i, cont_flavor->name, l_ipaks[l_paks_idx[i]]->name);
+                    (uint32_t) i, cont_flavor->name, l_ipaks[l_paks_idx[i]]->name);
             } else {
                 DebugMessage(M64MSG_INFO, "Game controller %u (%s) has nothing plugged in",
-                    i, cont_flavor->name);
+                    (uint32_t) i, cont_flavor->name);
             }
         }
     }
@@ -1273,6 +1271,18 @@ m64p_error main_run(void)
         }
     }
 
+#if 0
+    igbcam_backend->close(gbcam_backend);
+    igbcam_backend->release(gbcam_backend);
+
+    close_file_storage(&sra);
+    close_file_storage(&fla);
+    close_file_storage(&eep);
+    close_file_storage(&mpk);
+    close_file_storage(&dd_disk);
+#endif
+
+    /* Emulation stopped */
     rsp.romClosed();
     input.romClosed();
     audio.romClosed();
@@ -1282,6 +1292,10 @@ m64p_error main_run(void)
     g_EmulatorRunning = 0;
     StateChanged(M64CORE_EMU_STATE, M64EMU_STOPPED);
 
+    /**
+     * Actually never returns.
+     * Jump back to frontend for deinit
+     */
     extern cothread_t retro_thread;
     co_switch(retro_thread);
 
@@ -1299,6 +1313,18 @@ on_gfx_open_failure:
             release_gb_ram(&l_gb_carts_data[i]);
         }
     }
+
+#if 0
+    igbcam_backend->close(gbcam_backend);
+    igbcam_backend->release(gbcam_backend);
+
+    /* release storage files */
+    close_file_storage(&sra);
+    close_file_storage(&fla);
+    close_file_storage(&eep);
+    close_file_storage(&mpk);
+    close_file_storage(&dd_disk);
+#endif
 
     return M64ERR_PLUGIN_FAIL;
 }

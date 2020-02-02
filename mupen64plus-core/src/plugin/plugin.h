@@ -29,14 +29,16 @@
 
 enum gfx_plugin_type
 {
-   GFX_ANGRYLION = 0,
-   GFX_PARALLEL
+   GFX_GLIDEN64 = 0,
+   GFX_PARALLEL = 1,
+   GFX_ANGRYLION
 };
 
 enum rsp_plugin_type
 {
    RSP_CXD4 = 0,
-   RSP_PARALLEL
+   RSP_PARALLEL = 1,
+   RSP_HLE
 };
 
 extern void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin);

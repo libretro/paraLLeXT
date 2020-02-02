@@ -32,22 +32,22 @@
 #define fp_memory_map          (offsetof(struct new_dynarec_hot_state, memory_map))
 
 typedef enum {
-  EQ,
-  NE,
-  CS,
-  CC,
-  MI,
-  PL,
-  VS,
-  VC,
-  HI,
-  LS,
-  GE,
-  LT,
-  GT,
-  LE,
-  AW,
-  NV
+  COND_EQ,
+  COND_NE,
+  COND_CS,
+  COND_CC,
+  COND_MI,
+  COND_PL,
+  COND_VS,
+  COND_VC,
+  COND_HI,
+  COND_LS,
+  COND_GE,
+  COND_LT,
+  COND_GT,
+  COND_LE,
+  COND_AW,
+  COND_NV
 } eCond;
 
 void jump_vaddr_x0(void);
@@ -259,11 +259,46 @@ static uintptr_t jump_table_symbols[] = {
   (intptr_t)breakpoint
 };
 
+static void cache_flush(char* start, char* end)
+{
+    // Don't rely on GCC's __clear_cache implementation, as it caches
+    // icache/dcache cache line sizes, that can vary between cores on
+    // big.LITTLE architectures.
+    uint64_t addr, ctr_el0;
+    static size_t icache_line_size = 0xffff, dcache_line_size = 0xffff;
+    size_t isize, dsize;
+
+    __asm__ volatile("mrs %0, ctr_el0" : "=r"(ctr_el0));
+    isize = 4 << ((ctr_el0 >> 0) & 0xf);
+    dsize = 4 << ((ctr_el0 >> 16) & 0xf);
+
+    // use the global minimum cache line size
+    icache_line_size = isize = icache_line_size < isize ? icache_line_size : isize;
+    dcache_line_size = dsize = dcache_line_size < dsize ? dcache_line_size : dsize;
+
+    addr = (uint64_t)start & ~(uint64_t)(dsize - 1);
+    for (; addr < (uint64_t)end; addr += dsize)
+        // use "civac" instead of "cvau", as this is the suggested workaround for
+        // Cortex-A53 errata 819472, 826319, 827319 and 824069.
+            __asm__ volatile("dc civac, %0" : : "r"(addr) : "memory");
+    __asm__ volatile("dsb ish" : : : "memory");
+
+    addr = (uint64_t)start & ~(uint64_t)(isize - 1);
+    for (; addr < (uint64_t)end; addr += isize)
+            __asm__ volatile("ic ivau, %0" : : "r"(addr) : "memory");
+
+    __asm__ volatile("dsb ish" : : : "memory");
+    __asm__ volatile("isb" : : : "memory");
+}
+
 /* Linker */
 static void set_jump_target(intptr_t addr,uintptr_t target)
 {
   u_int *ptr=(u_int *)addr;
   intptr_t offset=target-(intptr_t)addr;
+
+  if(!ptr) // Indiana Jones is weird
+    return;
 
   if((*ptr&0xFC000000)==0x14000000) {
     assert(offset>=-134217728LL&&offset<134217728LL);
@@ -307,9 +342,7 @@ static void *add_pointer(void *src, void* addr)
   //assert((ptr2[4]&0xfffffc1f)==0xd61f0000); //br
   set_jump_target((intptr_t)src,(intptr_t)addr);
   intptr_t ptr_rx=((intptr_t)ptr-(intptr_t)base_addr)+(intptr_t)base_addr_rx;
-  #ifndef HAVE_LIBNX
-  __clear_cache((void*)ptr_rx, (void*)(ptr_rx+4));
-  #endif // HAVE_LIBNX
+  cache_flush((void*)ptr_rx, (void*)(ptr_rx+4));
   return ptr2;
 }
 
@@ -1519,7 +1552,8 @@ static void emit_andimm(int rs,int imm,int rt)
 static void emit_andimm64(int rs,int64_t imm,int rt)
 {
   u_int armval;
-  assert(genimm((uint64_t)imm,64,&armval));
+  uint32_t ret=genimm((uint64_t)imm,64,&armval);
+  assert(ret);
   assem_debug("and %s,%s,#%d",regname64[rt],regname64[rs],imm);
   output_w32(0x92000000|armval<<10|rs<<5|rt);
 }
@@ -1720,10 +1754,10 @@ static void emit_cmovne_imm(int imm,int rt)
   assert(imm==0||imm==1);
   if(imm){
     assem_debug("csinc %s,%s,%s,eq",regname[rt],regname[rt],regname[WZR]);
-    output_w32(0x1a800400|WZR<<16|EQ<<12|rt<<5|rt);
+    output_w32(0x1a800400|WZR<<16|COND_EQ<<12|rt<<5|rt);
   }else{
     assem_debug("csel %s,%s,%s,ne",regname[rt],regname[WZR],regname[rt]);
-    output_w32(0x1a800000|rt<<16|NE<<12|WZR<<5|rt);
+    output_w32(0x1a800000|rt<<16|COND_NE<<12|WZR<<5|rt);
   }
 }
 
@@ -1732,10 +1766,10 @@ static void emit_cmovl_imm(int imm,int rt)
   assert(imm==0||imm==1);
   if(imm){
     assem_debug("csinc %s,%s,%s,ge",regname[rt],regname[rt],regname[WZR]);
-    output_w32(0x1a800400|WZR<<16|GE<<12|rt<<5|rt);
+    output_w32(0x1a800400|WZR<<16|COND_GE<<12|rt<<5|rt);
   }else{
     assem_debug("csel %s,%s,%s,lt",regname[rt],regname[WZR],regname[rt]);
-    output_w32(0x1a800000|rt<<16|LT<<12|WZR<<5|rt);
+    output_w32(0x1a800000|rt<<16|COND_LT<<12|WZR<<5|rt);
   }
 }
 
@@ -1744,10 +1778,10 @@ static void emit_cmovb_imm(int imm,int rt)
   assert(imm==0||imm==1);
   if(imm){
     assem_debug("csinc %s,%s,%s,cs",regname[rt],regname[rt],regname[WZR]);
-    output_w32(0x1a800400|WZR<<16|CS<<12|rt<<5|rt);
+    output_w32(0x1a800400|WZR<<16|COND_CS<<12|rt<<5|rt);
   }else{
     assem_debug("csel %s,%s,%s,cc",regname[rt],regname[WZR],regname[rt]);
-    output_w32(0x1a800000|rt<<16|CC<<12|WZR<<5|rt);
+    output_w32(0x1a800000|rt<<16|COND_CC<<12|WZR<<5|rt);
   }
 }
 
@@ -1756,59 +1790,59 @@ static void emit_cmovs_imm(int imm,int rt)
   assert(imm==0||imm==1);
   if(imm){
     assem_debug("csinc %s,%s,%s,pl",regname[rt],regname[rt],regname[WZR]);
-    output_w32(0x1a800400|WZR<<16|PL<<12|rt<<5|rt);
+    output_w32(0x1a800400|WZR<<16|COND_PL<<12|rt<<5|rt);
   }else{
     assem_debug("csel %s,%s,%s,mi",regname[rt],regname[WZR],regname[rt]);
-    output_w32(0x1a800000|rt<<16|MI<<12|WZR<<5|rt);
+    output_w32(0x1a800000|rt<<16|COND_MI<<12|WZR<<5|rt);
   }
 }
 
 static void emit_cmove_reg(int rs,int rt)
 {
   assem_debug("csel %s,%s,%s,eq",regname[rt],regname[rs],regname[rt]);
-  output_w32(0x1a800000|rt<<16|EQ<<12|rs<<5|rt);
+  output_w32(0x1a800000|rt<<16|COND_EQ<<12|rs<<5|rt);
 }
 
 static void emit_cmovne_reg(int rs,int rt)
 {
   assem_debug("csel %s,%s,%s,ne",regname[rt],regname[rs],regname[rt]);
-  output_w32(0x1a800000|rt<<16|NE<<12|rs<<5|rt);
+  output_w32(0x1a800000|rt<<16|COND_NE<<12|rs<<5|rt);
 }
 
 static void emit_cmovl_reg(int rs,int rt)
 {
   assem_debug("csel %s,%s,%s,lt",regname[rt],regname[rs],regname[rt]);
-  output_w32(0x1a800000|rt<<16|LT<<12|rs<<5|rt);
+  output_w32(0x1a800000|rt<<16|COND_LT<<12|rs<<5|rt);
 }
 
 static void emit_cmovs_reg(int rs,int rt)
 {
   assem_debug("csel %s,%s,%s,mi",regname[rt],regname[rs],regname[rt]);
-  output_w32(0x1a800000|rt<<16|MI<<12|rs<<5|rt);
+  output_w32(0x1a800000|rt<<16|COND_MI<<12|rs<<5|rt);
 }
 
 static void emit_csel_vs(int rs1,int rs2,int rt)
 {
   assem_debug("csel %s,%s,%s,vs",regname[rt],regname[rs1],regname[rs2]);
-  output_w32(0x1a800000|rs2<<16|VS<<12|rs1<<5|rt);
+  output_w32(0x1a800000|rs2<<16|COND_VS<<12|rs1<<5|rt);
 }
 
 static void emit_csel_eq(int rs1,int rs2,int rt)
 {
   assem_debug("csel %s,%s,%s,eq",regname[rt],regname[rs1],regname[rs2]);
-  output_w32(0x1a800000|rs2<<16|EQ<<12|rs1<<5|rt);
+  output_w32(0x1a800000|rs2<<16|COND_EQ<<12|rs1<<5|rt);
 }
 
 static void emit_csel_cc(int rs1,int rs2,int rt)
 {
   assem_debug("csel %s,%s,%s,cc",regname[rt],regname[rs1],regname[rs2]);
-  output_w32(0x1a800000|rs2<<16|CC<<12|rs1<<5|rt);
+  output_w32(0x1a800000|rs2<<16|COND_CC<<12|rs1<<5|rt);
 }
 
 static void emit_csel_ls(int rs1,int rs2,int rt)
 {
   assem_debug("csel %s,%s,%s,ls",regname[rt],regname[rs1],regname[rs2]);
-  output_w32(0x1a800000|rs2<<16|LS<<12|rs1<<5|rt);
+  output_w32(0x1a800000|rs2<<16|COND_LS<<12|rs1<<5|rt);
 }
 
 static void emit_slti32(int rs,int imm,int rt)
@@ -1958,70 +1992,70 @@ static void emit_jne(intptr_t a)
 {
   assem_debug("bne %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|NE);
+  output_w32(0x54000000|offset<<5|COND_NE);
 }
 
 static void emit_jeq(intptr_t a)
 {
   assem_debug("beq %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|EQ);
+  output_w32(0x54000000|offset<<5|COND_EQ);
 }
 
 static void emit_js(intptr_t a)
 {
   assem_debug("bmi %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|MI);
+  output_w32(0x54000000|offset<<5|COND_MI);
 }
 
 static void emit_jns(intptr_t a)
 {
   assem_debug("bpl %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|PL);
+  output_w32(0x54000000|offset<<5|COND_PL);
 }
 
 static void emit_jl(intptr_t a)
 {
   assem_debug("blt %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|LT);
+  output_w32(0x54000000|offset<<5|COND_LT);
 }
 
 static void emit_jge(intptr_t a)
 {
   assem_debug("bge %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|GE);
+  output_w32(0x54000000|offset<<5|COND_GE);
 }
 
 static void emit_jno(intptr_t a)
 {
   assem_debug("bvc %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|VC);
+  output_w32(0x54000000|offset<<5|COND_VC);
 }
 
 static void emit_jcc(intptr_t a)
 {
   assem_debug("bcc %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|CC);
+  output_w32(0x54000000|offset<<5|COND_CC);
 }
 
 static void emit_jae(intptr_t a)
 {
   assem_debug("bcs %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|CS);
+  output_w32(0x54000000|offset<<5|COND_CS);
 }
 
 static void emit_jb(intptr_t a)
 {
   assem_debug("bcc %x",a);
   u_int offset=gencondjmp(a);
-  output_w32(0x54000000|offset<<5|CC);
+  output_w32(0x54000000|offset<<5|COND_CC);
 }
 
 static void emit_pushreg(u_int r)
@@ -2263,9 +2297,7 @@ static void emit_writeword_dualindexedx4(int rt, int rs1, int rs2)
 
 static void emit_writeword_indexed_tlb(int rt, int addr, int rs, int map)
 {
-  assert(map>=0);
   if(map<0) emit_writeword_indexed(rt, addr, rs);
-  else if(rs<0) emit_writeword_indexed(rt, addr, map);
   else {
     if(addr==0) {
       emit_writeword_dualindexedx4(rt, rs, map);
@@ -2296,9 +2328,7 @@ static void emit_writehword_indexed(int rt, int offset, int rs)
 
 static void emit_writehword_indexed_tlb(int rt, int addr, int rs, int map)
 {
-  assert(map>=0);
   if(map<0) emit_writehword_indexed(rt, addr, rs);
-  else if(rs<0) emit_writehword_indexed(rt, addr, map);
   else {
     if(addr==0) {
       emit_shlimm64(map,2,HOST_TEMPREG);
@@ -2321,9 +2351,7 @@ static void emit_writebyte_indexed(int rt, int offset, int rs)
 
 static void emit_writebyte_indexed_tlb(int rt, int addr, int rs, int map)
 {
-  assert(map>=0);
   if(map<0) emit_writebyte_indexed(rt, addr, rs);
-  else if(rs<0) emit_writebyte_indexed(rt, addr, map);
   else {
     if(addr==0) {
       emit_shlimm64(map,2,HOST_TEMPREG);
@@ -5098,10 +5126,7 @@ static void do_clear_cache(void)
               end+=4096;
               j++;
             }else{
-              #ifndef HAVE_LIBNX
-              __clear_cache((char *)start,(char *)end);
-              #endif // HAVE_LIBNX
-              //cacheflush((void *)start,(void *)end,0);
+              cache_flush((char *)start,(char *)end);
               break;
             }
           }
@@ -5137,12 +5162,6 @@ static void arch_init(void) {
   jump_table_symbols[4] = (intptr_t)cached_interp_DDIV;
   jump_table_symbols[5] = (intptr_t)cached_interp_DDIVU;
 
-#ifdef HAVE_LIBNX
-  bool jit_was_executable = jit_is_executable;
-  if(jit_is_executable)
-    jit_force_writeable();
-#endif
-
   // Trampolines for jumps >128MB
   intptr_t *ptr,*ptr2,*ptr3;
   ptr=(intptr_t *)jump_table_symbols;
@@ -5164,9 +5183,6 @@ static void arch_init(void) {
     ptr2++;
     ptr3+=2;
   }
-  
-#ifdef HAVE_LIBNX
-  if(jit_was_executable)
-    jit_force_executable();
-#endif
+
+  __clear_cache((char *)base_addr+(1<<TARGET_SIZE_2)-JUMP_TABLE_SIZE,(char *)base_addr+(1<<TARGET_SIZE_2));
 }

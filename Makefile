@@ -6,6 +6,7 @@ HAVE_RSP_DUMP=0
 HAVE_RDP_DUMP=0
 HAVE_VULKAN_DEBUG=0
 HAVE_PARALLEL_RSP=0
+WANT_LLVM_OVERRIDE=0
 DYNAFLAGS :=
 INCFLAGS  :=
 COREFLAGS :=
@@ -335,7 +336,7 @@ else ifeq ($(platform), emscripten)
 else
    TARGET := $(TARGET_NAME)_libretro.dll
    LDFLAGS += -shared -static-libgcc -static-libstdc++ -Wl,--version-script=$(LIBRETRO_DIR)/link.T -lwinmm -lgdi32
-   GL_LIB := -lopengl32
+   GL_LIB := -lopengl32 -lversion
    ifneq (,$(findstring win32,$(platform)))
       CC = i686-w64-mingw32-gcc
       CXX = i686-w64-mingw32-g++
@@ -375,7 +376,7 @@ ifeq ($(DEBUG), 1)
    CPUOPTS += -O0 -g
    CPUOPTS += -DOPENGL_DEBUG
 else
-   CPUOPTS += -DNDEBUG -fsigned-char -ffast-math -fno-strict-aliasing -fomit-frame-pointer -fvisibility=hidden
+   CPUOPTS += -DNDEBUG -fipa-pta -fsigned-char -ffast-math -fno-strict-aliasing -fomit-frame-pointer -fvisibility=hidden
 ifneq ($(platform), libnx)
    CPUOPTS := -O3 $(CPUOPTS)
 endif
@@ -400,7 +401,7 @@ ifeq (,$(findstring android,$(platform)))
    LDFLAGS    += -lpthread
 endif
 
-LDFLAGS    += $(fpic) -O3 -lz -lpng
+LDFLAGS    += $(fpic) -lz -lpng
 
 all: $(TARGET)
 $(TARGET): $(OBJECTS)

@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <unordered_map>
 #include <cstring>
+#include <cstdio>
 #include <vector>
 
 #define RDP_MAX_PRIMITIVES 	1024
@@ -535,8 +536,8 @@ private:
 	{
 		RDRAM()
 		{
-			shadow_base.resize(RDRAM_SIZE);
-			hidden_bits.resize(RDRAM_SIZE);
+			shadow_base.resize(RDRAM_SIZE_VK);
+			hidden_bits.resize(RDRAM_SIZE_VK);
 		}
 
 		uint8_t *base = nullptr;

@@ -98,6 +98,7 @@ DEFINE_GFX(angrylion);
 #ifdef HAVE_PARALLEL
 DEFINE_GFX(parallel);
 #endif
+DEFINE_GFX(gln64);
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
@@ -176,6 +177,7 @@ static void EmptyFunc(void)
     }
 
 DEFINE_RSP(cxd4);
+DEFINE_RSP(hle);
 #ifdef HAVE_PARALLEL_RSP
 DEFINE_RSP(parallelRSP);
 #endif
@@ -381,6 +383,9 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
       case GFX_ANGRYLION:
          gfx = gfx_angrylion;
          break;
+     case GFX_GLIDEN64:
+         gfx = gfx_gln64;
+         break;
       case GFX_PARALLEL:
 #ifdef HAVE_PARALLEL
          gfx = gfx_parallel;
@@ -396,6 +401,9 @@ void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rs
       case RSP_CXD4:
          rsp = rsp_cxd4;
          break;
+        case RSP_HLE:
+        rsp = rsp_hle;
+        break;
 #ifdef HAVE_PARALLEL_RSP
       case RSP_PARALLEL:
          rsp = rsp_parallelRSP;
