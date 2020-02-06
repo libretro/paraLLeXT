@@ -109,6 +109,7 @@ enum gfx_plugin_type gfx_plugin;
 enum rsp_plugin_type rsp_plugin;
 
 int rspMode = 0;
+int first_time = 1;
 
 extern struct device g_dev;
 extern unsigned int emumode;
@@ -1404,6 +1405,7 @@ extern void *jit_old_addr;
 #endif
 void retro_unload_game(void)
 {
+first_time=1;
 #if defined(HAVE_LIBNX) && defined(DYNAREC)
 	jitTransitionToWritable(&dynarec_jit);
 	if (jit_old_addr != 0)
@@ -1424,6 +1426,17 @@ void retro_run(void)
 {
 	libretro_swap_buffer = false;
 	static bool updated = false;
+
+
+         if (first_time)
+      {
+         first_time = 0;
+         emu_step_initialize();
+         /* Additional check for vioverlay not set at start */
+        update_variables();
+        gfx_set_filtering();
+      }
+
 	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
 		update_variables();
    
