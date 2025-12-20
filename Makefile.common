@@ -387,13 +387,6 @@ SOURCES_C += $(LIBRETRO_COMM_DIR)/libco/libco.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c 
 
-ifeq ($(HAVE_NEON),1)
-
-	SOURCES_ASM += $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16_neon.S \
-						$(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float_neon.S \
-						$(LIBRETRO_COMM_DIR)/audio/resampler/drivers/sinc_resampler_neon.S
-endif
-
 ifeq ($(HAVE_PARALLEL),1)
 CFLAGS   += -DHAVE_PARALLEL
 CXXFLAGS += -DHAVE_PARALLEL
