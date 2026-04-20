@@ -364,6 +364,21 @@ ifeq ($(STATIC_LINKING), 1)
    endif
 endif
 
+# webOS
+ifneq (,$(or $(findstring webos,$(CROSS_COMPILE)),$(findstring starfish,$(CROSS_COMPILE))))
+   GLES = 1
+   GL_LIB := -lGLESv2
+   ifneq (,$(findstring arm,$(CROSS_COMPILE)))
+      HAVE_NEON = 1
+      WITH_DYNAREC = arm
+   else
+      WITH_DYNAREC = aarch64
+   endif
+   # GCC 14 fixes for multiple definitions
+   CFLAGS   += -fcommon
+   CXXFLAGS += -fcommon
+endif
+
 include Makefile.common
 
 ifeq ($(HAVE_NEON), 1)
